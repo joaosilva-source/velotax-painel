@@ -22,14 +22,17 @@ export default function Home() {
           {/* HERO */}
           <div className="mb-8 surface p-6 flex items-center justify-between">
             <div>
-              <h1 className="titulo-principal">Painel de Solicitações</h1>
+              <div className="flex items-center gap-3">
+                <img src="/brand/velotax-symbol.png" alt="Velotax" className="h-10 md:h-12 w-auto" />
+                <h1 className="titulo-principal">Painel de Solicitações</h1>
+              </div>
               <p className="text-white/80">Envie solicitações técnicas para o WhatsApp</p>
               <div className="mt-3 flex items-center gap-3">
                 <span className="badge">Online</span>
                 <span className="text-white/60 text-sm">Grupo padrão configurado</span>
               </div>
             </div>
-            <img src="/velotax-logo.svg" alt="Velotax" className="h-8 opacity-80" />
+            <img src="/brand/velotax-wordmark.png" alt="Velotax" className="h-14 md:h-16 opacity-95" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

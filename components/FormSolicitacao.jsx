@@ -14,6 +14,8 @@ export default function FormSolicitacao({ registrarLog }) {
     excluirVelotax: false,
     excluirCelcoin: false,
     saldoZerado: false,
+    portabilidadePendente: false,
+    dividaIrpfQuitada: false,
     observacoes: "",
   });
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,9 @@ export default function FormSolicitacao({ registrarLog }) {
     if (form.tipo === "Exclusão de Conta") {
       msg += `Excluir conta Velotax: ${simNao(form.excluirVelotax)}\n`;
       msg += `Excluir conta Celcoin: ${simNao(form.excluirCelcoin)}\n`;
-      msg += `Conta com saldo zerado: ${simNao(form.saldoZerado)}\n`;
+      msg += `Conta zerada: ${simNao(form.saldoZerado)}\n`;
+      msg += `Portabilidade pendente: ${simNao(form.portabilidadePendente)}\n`;
+      msg += `Dívida IRPF quitada: ${simNao(form.dividaIrpfQuitada)}\n`;
       msg += `Observações: ${form.observacoes || "—"}\n`;
     } else if (form.tipo === "Alteração de Dados Cadastrais") {
       msg += `Tipo de informação: ${form.infoTipo}\nDado antigo: ${form.dadoAntigo}\nDado novo: ${form.dadoNovo}\nFotos verificadas: ${simNao(form.fotosVerificadas)}\nObservações: ${form.observacoes || "—"}\n`;
@@ -122,7 +126,9 @@ export default function FormSolicitacao({ registrarLog }) {
         <div className="bg-white p-4 rounded-lg mt-2 border border-black/10">
           <label className="flex items-center gap-2"><input className="check-anim" type="checkbox" checked={form.excluirVelotax} onChange={(e) => atualizar("excluirVelotax", e.target.checked)} /> Excluir conta Velotax</label>
           <label className="flex items-center gap-2 mt-2"><input className="check-anim" type="checkbox" checked={form.excluirCelcoin} onChange={(e) => atualizar("excluirCelcoin", e.target.checked)} /> Excluir conta Celcoin</label>
-          <label className="flex items-center gap-2 mt-2"><input className="check-anim" type="checkbox" checked={form.saldoZerado} onChange={(e) => atualizar("saldoZerado", e.target.checked)} /> Conta com saldo zerado</label>
+          <label className="flex items-center gap-2 mt-2"><input className="check-anim" type="checkbox" checked={form.saldoZerado} onChange={(e) => atualizar("saldoZerado", e.target.checked)} /> Conta zerada</label>
+          <label className="flex items-center gap-2 mt-2"><input className="check-anim" type="checkbox" checked={form.portabilidadePendente} onChange={(e) => atualizar("portabilidadePendente", e.target.checked)} /> Portabilidade pendente</label>
+          <label className="flex items-center gap-2 mt-2"><input className="check-anim" type="checkbox" checked={form.dividaIrpfQuitada} onChange={(e) => atualizar("dividaIrpfQuitada", e.target.checked)} /> Dívida IRPF quitada</label>
         </div>
       )}
 
