@@ -2,7 +2,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Env vars (.env.local):
+
+```
+NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
+```
+
+Then run the development server:
 
 ```bash
 npm run dev

@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #F5F7FB; /* claro */
+  --foreground: #272A30; /* grafite */
+  --accent: #1634FF; /* azul escuro */
+  --surface: #FFFFFF; /* cards */
+  --surface-strong: #FFFFFF;
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(1200px 600px at 80% -10%, rgba(22,52,255,.08), transparent),
+              radial-gradient(900px 420px at -10% 10%, rgba(121,29,208,.06), transparent),
+              var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Poppins', Arial, Helvetica, sans-serif;
 }
+
+.bg-grid {
+  background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.titulo-principal {
+  @apply text-2xl md:text-3xl font-bold mb-2;
+}
+
+.subtitulo {
+  @apply text-lg font-semibold text-white mb-2;
+}
+
+.input {
+  @apply w-full bg-white border border-[#1634FF]/30 rounded-lg px-3 py-2 outline-none text-[#272A30] placeholder-black/40 transition-all duration-200 focus:border-[#1634FF] focus:ring-2 focus:ring-[#1634FF]/25 shadow-sm;
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-[#1634FF] to-[#791DD0] text-white font-medium px-5 py-2 rounded-lg hover:brightness-110 active:brightness-95 transition-all duration-200 shadow-lg;
+}
+
+.card {
+  @apply bg-[color:var(--surface)] border border-black/10 rounded-3xl shadow-lg backdrop-blur-xl transition-transform duration-300;
+}
+
+.surface {
+  @apply bg-[color:var(--surface-strong)] border border-black/10 rounded-3xl backdrop-blur-xl shadow-lg;
+}
+
+.section-title {
+  @apply flex items-center gap-3 text-xl font-semibold mb-4 text-[#0b0b2e];
+}
+.section-title::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 22px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #1634FF, #1DFDB9);
+}
+
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#1634FF]/10 border border-[#1634FF]/20 text-[#1634FF];
+}
+
+/* Input wrappers with icons */
+.input-wrap { @apply relative; }
+.input-icon {
+  @apply absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none;
+}
+.input.input-with-icon { @apply pl-10; }
+
+/* Checkbox microinteractions */
+.check-anim { @apply transition-transform duration-150 ease-out; }
+.check-anim:active { transform: scale(0.94); }
+.check-anim:checked { animation: pulse .25s ease-out; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(29,253,185,0.6); }
+  100% { box-shadow: 0 0 0 10px rgba(29,253,185,0); }
+}
+
+/* Toast theme overrides (react-hot-toast) */
+.hot-toast { @apply bg-white text-[#272A30] border border-black/10 rounded-xl; }
+.hot-toast-success { @apply border-[#1DFDB9]/40; }
+.hot-toast-error { @apply border-[#FF8400]/40; }
+
+/* Responsive spacing */
+.container-pad { @apply px-4 md:px-6 lg:px-8; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeUp { animation: fadeUp .5s ease-out both; }
+
+@keyframes spin { to { transform: rotate(360deg) } }
+.spinner { border: 3px solid rgba(255,255,255,.15); border-top-color: #1DFDB9; border-radius: 50%; width: 22px; height: 22px; animation: spin .8s linear infinite; }
