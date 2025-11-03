@@ -71,6 +71,29 @@ export default function FormSolicitacao({ registrarLog }) {
       if (res.ok) {
         registrarLog("✅ Enviado com sucesso");
         toast.success("Solicitação enviada");
+
+        try {
+          const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
+          await fetch('/api/requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              agente: form.agente,
+              cpf: form.cpf,
+              tipo: form.tipo,
+              payload: form,
+              agentContact: defaultJid || null,
+            })
+          });
+
+          await fetch('/api/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'send_request', detail: { tipo: form.tipo, cpf: form.cpf } })
+          });
+        } catch (e) {
+          console.warn('Falha ao salvar request/log', e);
+        }
       } else {
         const txt = await res.text();
         registrarLog("❌ Erro da API: " + txt);

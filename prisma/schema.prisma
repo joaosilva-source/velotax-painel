@@ -1,0 +1,34 @@
+// prisma/schema.prisma
+// Banco: Supabase Postgres
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Request {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  agente          String
+  cpf             String
+  tipo            String
+  payload         Json
+  status          String   @default("em aberto")
+  respondedAt     DateTime? @map("responded_at")
+  respondedBy     String?   @map("responded_by")
+  agentContact    String?   @map("agent_contact")
+  waMessageId     String?   @map("wa_message_id")
+}
+
+model UsageLog {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now()) @map("created_at")
+  userEmail  String?  @map("user_email")
+  action     String
+  detail     Json?
+  ip         String?
+}
