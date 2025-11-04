@@ -15,8 +15,8 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  // Proteger páginas principais e /admin
-  const protectedPaths = ['/', '/admin'];
+  // Proteger apenas /admin inicialmente
+  const protectedPaths = ['/admin'];
   const isProtected = protectedPaths.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
   if (!isProtected) return NextResponse.next();
@@ -32,5 +32,5 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/admin/:path*'],
 };
