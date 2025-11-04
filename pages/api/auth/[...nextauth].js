@@ -22,8 +22,7 @@ export default NextAuth({
       return session;
     }
   },
-  pages: {
-    signIn: "/api/auth/signin"
-  },
+  // use default NextAuth pages (/api/auth/signin, etc.) to avoid redirect loops
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET
 });
