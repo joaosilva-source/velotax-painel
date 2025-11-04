@@ -12,17 +12,14 @@ export default NextAuth({
     })
   ],
   callbacks: {
-    async signIn({ account, profile }) {
-      const domain = process.env.ALLOWED_DOMAIN || "";
-      const email = profile?.email || "";
-      if (!domain) return false;
-      return email.toLowerCase().endsWith(`@${domain.toLowerCase()}`);
-    },
+    // Temporariamente sem restrição de domínio para diagnosticar o loop
+    async signIn() { return true; },
     async session({ session }) {
       return session;
     }
   },
   // use default NextAuth pages (/api/auth/signin, etc.) to avoid redirect loops
   trustHost: true,
+  debug: true,
   secret: process.env.NEXTAUTH_SECRET
 });
