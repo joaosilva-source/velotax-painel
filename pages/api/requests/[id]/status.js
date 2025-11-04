@@ -44,6 +44,16 @@ export default async function handler(req, res) {
       notifyGoogleChat({ cardText: msg })
     ]);
 
+    // logar evento de atualização de status
+    try {
+      await prisma.usageLog.create({
+        data: {
+          action: 'status_update',
+          detail: { id: updated.id, cpf: updated.cpf, tipo: updated.tipo, status },
+        }
+      });
+    } catch {}
+
     return res.json(updated);
   } catch (e) {
     return res.status(500).json({ error: e.message });

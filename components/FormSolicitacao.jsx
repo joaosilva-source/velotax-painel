@@ -1,5 +1,5 @@
 // components/FormSolicitacao.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 export default function FormSolicitacao({ registrarLog }) {
@@ -19,6 +19,61 @@ export default function FormSolicitacao({ registrarLog }) {
     observacoes: "",
   });
   const [loading, setLoading] = useState(false);
+  const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
+
+  // carregar cache inicial
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('velotax_local_logs');
+      if (cached) setLocalLogs(JSON.parse(cached));
+    } catch {}
+  }, []);
+
+  // util: salvar cache
+  const saveCache = (items) => {
+    setLocalLogs(items);
+    try { localStorage.setItem('velotax_local_logs', JSON.stringify(items)); } catch {}
+  };
+
+  // função para buscar status atualizados agora
+  const refreshNow = async () => {
+    if (!localLogs.length) return;
+    try {
+      const res = await fetch('/api/requests');
+      if (!res.ok) return;
+      const all = await res.json();
+      const updated = localLogs.map(item => {
+        const match = item.waMessageId
+          ? all.find(r => r.waMessageId === item.waMessageId)
+          : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
+        return match ? { ...item, status: match.status } : item;
+      });
+      saveCache(updated);
+    } catch {}
+  };
+
+  // refresh de status a cada 20s buscando no servidor
+  useEffect(() => {
+    const refresh = async () => {
+      if (!localLogs.length) return;
+      try {
+        const res = await fetch('/api/requests');
+        if (!res.ok) return;
+        const all = await res.json();
+        const updated = localLogs.map(item => {
+          // preferir match por waMessageId; fallback por cpf+tipo
+          const match = item.waMessageId
+            ? all.find(r => r.waMessageId === item.waMessageId)
+            : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
+          return match ? { ...item, status: match.status } : item;
+        });
+        saveCache(updated);
+      } catch {}
+    };
+    refresh();
+    const id = setInterval(refresh, 20000);
+    return () => clearInterval(id);
+  }, [localLogs.length]);
 
   const atualizar = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
 
@@ -73,6 +128,12 @@ export default function FormSolicitacao({ registrarLog }) {
         toast.success("Solicitação enviada");
 
         try {
+          let waMessageId = null;
+          try {
+            const data = await res.json();
+            waMessageId = data?.messageId || data?.key?.id || null;
+          } catch {}
+
           const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
           await fetch('/api/requests', {
             method: 'POST',
@@ -83,14 +144,25 @@ export default function FormSolicitacao({ registrarLog }) {
               tipo: form.tipo,
               payload: form,
               agentContact: defaultJid || null,
+              waMessageId,
             })
           });
 
           await fetch('/api/logs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'send_request', detail: { tipo: form.tipo, cpf: form.cpf } })
+            body: JSON.stringify({ action: 'send_request', detail: { tipo: form.tipo, cpf: form.cpf, waMessageId } })
           });
+
+          // salvar no cache local para o agente acompanhar
+          const newItem = {
+            cpf: form.cpf,
+            tipo: form.tipo,
+            waMessageId,
+            status: 'em aberto',
+            createdAt: new Date().toISOString(),
+          };
+          saveCache([newItem, ...localLogs].slice(0, 50));
         } catch (e) {
           console.warn('Falha ao salvar request/log', e);
         }
@@ -191,6 +263,32 @@ export default function FormSolicitacao({ registrarLog }) {
           {loading ? "Enviando..." : "Enviar Solicitação"}
         </button>
         <span className="text-sm text-white/70">Envia para o grupo padrão configurado</span>
+      </div>
+
+      {/* Logs de Envio (para o agente acompanhar) */}
+      <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+          <h2 className="text-lg font-semibold">Logs de Envio</h2>
+          <button type="button" onClick={refreshNow} className="ml-auto text-sm px-2 py-1 rounded bg-black/5 hover:bg-black/10">Atualizar agora</button>
+        </div>
+        {(!localLogs || localLogs.length === 0) && (
+          <div className="text-black/60">Nenhum log ainda.</div>
+        )}
+        <div className="space-y-2">
+          {localLogs.map((l, idx) => {
+            const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+            return (
+              <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{icon}</span>
+                  <span className="text-sm">{l.cpf} — {l.tipo}</span>
+                </div>
+                <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </form>
   );

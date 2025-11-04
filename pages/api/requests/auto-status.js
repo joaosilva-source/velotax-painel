@@ -21,6 +21,16 @@ export default async function handler(req, res) {
       data: { status, respondedAt: new Date(), respondedBy: reactor || null }
     });
 
+    // logar evento de auto status (reação ✅)
+    try {
+      await prisma.usageLog.create({
+        data: {
+          action: 'auto_status_done',
+          detail: { id: updated.id, cpf: updated.cpf, tipo: updated.tipo, waMessageId },
+        }
+      });
+    } catch {}
+
     return res.json(updated);
   } catch (e) {
     return res.status(500).json({ error: e.message });

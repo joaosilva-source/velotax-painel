@@ -49,7 +49,10 @@ export default function AdminSolicitacoes() {
       <div className="space-y-3">
         {filtrados.map((r) => (
           <div key={r.id} className="p-4 bg-white rounded-lg border border-black/10">
-            <div className="font-semibold">{r.tipo}</div>
+            <div className="font-semibold flex items-center gap-2">
+              <span>{r.tipo}</span>
+              {r.status === 'feito' && <span className="inline-flex items-center gap-1 text-green-700 text-sm"><span>✅</span><span>Feito</span></span>}
+            </div>
             <div className="text-sm text-black/70">Agente: {r.agente} • CPF: {r.cpf}</div>
             <div className="text-sm">Status: <span className="font-medium">{r.status}</span></div>
             <div className="mt-2 flex items-center gap-2">
