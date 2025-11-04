@@ -31,9 +31,11 @@ export default function AdminLogs() {
       setLoading(true);
       try {
         const res = await fetch('/api/logs');
-        const data = await res.json();
+        let data = [];
+        try { data = await res.json(); } catch {}
+        if (!Array.isArray(data)) data = [];
         setItems(data);
-        localStorage.setItem('velotax_logs', JSON.stringify(data));
+        try { localStorage.setItem('velotax_logs', JSON.stringify(data)); } catch {}
       } catch {}
       setLoading(false);
     };
@@ -42,7 +44,7 @@ export default function AdminLogs() {
     return () => clearInterval(id);
   }, []);
 
-  const rows = useMemo(() => items.map((l) => ({
+  const rows = useMemo(() => (Array.isArray(items) ? items : []).map((l) => ({
     id: l.id,
     createdAt: new Date(l.createdAt).toLocaleString(),
     ...formatItem(l)

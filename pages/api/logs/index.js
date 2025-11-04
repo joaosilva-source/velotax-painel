@@ -30,7 +30,8 @@ export default async function handler(req, res) {
       cache = { data: list, ts: now };
       return res.json(cache.data);
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      // Evitar quebrar a UI: devolve lista vazia
+      return res.status(200).json([]);
     }
   }
 
