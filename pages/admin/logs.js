@@ -13,13 +13,6 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
 
-function formatItem(log) {
-  const a = log.action;
-  const d = log.detail || {};
-  if (a === 'auto_status_done') {
-    return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} marcado via reação` };
-  }
-
 function normalizeName(s) {
   try {
     return String(s || '')
@@ -33,6 +26,13 @@ function normalizeName(s) {
     return String(s || '').toLowerCase().trim();
   }
 }
+
+function formatItem(log) {
+  const a = log.action;
+  const d = log.detail || {};
+  if (a === 'auto_status_done') {
+    return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} marcado via reação` };
+  }
   if (a === 'status_update') {
     const st = d.status || '';
     if (st === 'feito') return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'}` };
