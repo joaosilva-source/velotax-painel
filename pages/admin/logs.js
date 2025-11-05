@@ -35,6 +35,11 @@ export default function AdminLogs() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
+  const [searchCpf, setSearchCpf] = useState('');
+  const [selectedAgents, setSelectedAgents] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     const cached = localStorage.getItem('velotax_logs');
@@ -72,8 +77,36 @@ export default function AdminLogs() {
     ...formatItem(l)
   })), [items]);
 
-  const chartData = useMemo(() => {
+  const allAgents = useMemo(() => {
     const list = Array.isArray(requests) ? requests : [];
+    const set = new Set(list.map((r) => r?.agente || '—'));
+    return Array.from(set).sort();
+  }, [requests]);
+
+  const allTypes = useMemo(() => {
+    const list = Array.isArray(requests) ? requests : [];
+    const set = new Set(list.map((r) => r?.tipo || 'Outro'));
+    return Array.from(set).sort();
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    const list = Array.isArray(requests) ? requests : [];
+    const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
+    const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null;
+    return list.filter((r) => {
+      const agente = r?.agente || '—';
+      const tipo = r?.tipo || 'Outro';
+      const ts = r?.createdAt ? new Date(r.createdAt).getTime() : 0;
+      if (selectedAgents.length && !selectedAgents.includes(agente)) return false;
+      if (selectedTypes.length && !selectedTypes.includes(tipo)) return false;
+      if (fromTs && ts < fromTs) return false;
+      if (toTs && ts > toTs) return false;
+      return true;
+    });
+  }, [requests, selectedAgents, selectedTypes, dateFrom, dateTo]);
+
+  const chartData = useMemo(() => {
+    const list = filteredRequests;
     const byType = {};
     const byAgent = {};
     const byHour = Array.from({ length: 24 }, () => 0);
@@ -93,28 +126,90 @@ export default function AdminLogs() {
     return {
       byType: { labels: typeLabels, datasets: [{ label: 'Solicitações por tipo', data: typeValues, backgroundColor: 'rgba(59,130,246,0.6)' }] },
       byAgent: { labels: agentLabels, datasets: [{ label: 'Solicitações por agente', data: agentValues, backgroundColor: 'rgba(34,197,94,0.6)' }] },
-      byHour: { labels: hourLabels, datasets: [{ label: 'Solicitações por hora', data: byHour, borderColor: 'rgba(234,88,12,1)', backgroundColor: 'rgba(234,88,12,0.2)' }] },
+      byHour: { labels: hourLabels, datasets: [{ label: 'Solicitações por hora', data: byHour, borderColor: 'rgba(234,88,12,1)', backgroundColor: 'rgba(234,88,12,0.2)', pointRadius: 3, pointHoverRadius: 6 }] },
     };
-  }, [requests]);
+  }, [filteredRequests]);
 
   return (
     <div className="min-h-screen container-pad py-8 max-w-6xl mx-auto">
       <h1 className="titulo-principal mb-4">Logs</h1>
       <div className="mb-3 text-sm text-black/70">{loading ? 'Atualizando…' : 'Atualizado'}</div>
+      <div className="p-4 bg-white rounded border border-black/10 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm mb-1">Pesquisar CPF</label>
+            <input value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} placeholder="Digite o CPF" className="w-full border rounded px-2 py-1" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">De (data)</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-full border rounded px-2 py-1" />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Até (data)</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full border rounded px-2 py-1" />
+          </div>
+          <div className="md:col-span-1"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+          <div>
+            <div className="text-sm mb-1">Agentes</div>
+            <div className="flex flex-wrap gap-2">
+              {allAgents.map((a) => (
+                <label key={a} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
+                  <input type="checkbox" checked={selectedAgents.includes(a)} onChange={(e) => {
+                    setSelectedAgents((prev) => e.target.checked ? [...prev, a] : prev.filter((x) => x !== a));
+                  }} />
+                  <span>{a}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm mb-1">Tipos</div>
+            <div className="flex flex-wrap gap-2">
+              {allTypes.map((t) => (
+                <label key={t} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
+                  <input type="checkbox" checked={selectedTypes.includes(t)} onChange={(e) => {
+                    setSelectedTypes((prev) => e.target.checked ? [...prev, t] : prev.filter((x) => x !== t));
+                  }} />
+                  <span>{t}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="p-4 bg-white rounded border border-black/10">
           <div className="font-medium mb-2">Solicitações por tipo</div>
-          <Bar data={chartData.byType} options={{ responsive: true, plugins: { legend: { display: false } } }} />
+          <Bar data={chartData.byType} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
         </div>
         <div className="p-4 bg-white rounded border border-black/10">
           <div className="font-medium mb-2">Solicitações por agente</div>
-          <Bar data={chartData.byAgent} options={{ responsive: true, plugins: { legend: { display: false } } }} />
+          <Bar data={chartData.byAgent} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
         </div>
         <div className="p-4 bg-white rounded border border-black/10 md:col-span-2">
           <div className="font-medium mb-2">Solicitações por hora</div>
-          <Line data={chartData.byHour} options={{ responsive: true, plugins: { legend: { display: false } } }} />
+          <Line data={chartData.byHour} options={{ responsive: true, interaction: { intersect: false, mode: 'nearest' }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items.length ? `Hora ${items[0].label}:00` : '', label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
         </div>
       </div>
+      {searchCpf && (
+        <div className="p-4 bg-white rounded border border-black/10 mb-6">
+          <div className="font-medium mb-2">Resultados para CPF: {searchCpf}</div>
+          <div className="text-sm text-black/60 mb-2">{filteredRequests.filter((r) => String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).length} registro(s) encontrado(s)</div>
+          <div className="space-y-2 max-h-72 overflow-auto">
+            {filteredRequests.filter((r) => String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).map((r) => (
+              <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                  <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+                </div>
+                <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="space-y-2">
         {rows.map((r) => (
           <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
