@@ -39,10 +39,15 @@ export default async function handler(req, res) {
 
     const msg = `Atualização da solicitação ${id}\nAgente: ${updated.agente}\nCPF: ${updated.cpf}\nTipo: ${updated.tipo}\nStatus: ${status}`;
 
-    await Promise.all([
-      notifyWhatsapp({ text: msg, toJid: updated.agentContact || process.env.NEXT_PUBLIC_DEFAULT_JID }),
+    const tasks = [
       notifyGoogleChat({ cardText: msg })
-    ]);
+    ];
+    if (process.env.WHATSAPP_STATUS_UPDATE_ENABLED === 'true') {
+      tasks.push(
+        notifyWhatsapp({ text: msg, toJid: updated.agentContact || process.env.NEXT_PUBLIC_DEFAULT_JID })
+      );
+    }
+    await Promise.all(tasks);
 
     // logar evento de atualização de status
     try {
