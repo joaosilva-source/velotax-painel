@@ -211,6 +211,7 @@ export default function FormSolicitacao({ registrarLog }) {
           <option>Alteração de Dados Cadastrais</option>
           <option>Exclusão de Chave PIX</option>
           <option>Exclusão de Conta</option>
+          <option>Reativação de Conta</option>
           </select>
         </div>
       </div>
