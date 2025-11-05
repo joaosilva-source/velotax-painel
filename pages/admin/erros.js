@@ -9,6 +9,7 @@ export default function AdminErros() {
   const [enviando, setEnviando] = useState(false);
   const [okMsg, setOkMsg] = useState('');
 
+  // compressão simples para reduzir tamanho (opcional)
   const compressImage = (file, maxW = 1200, maxH = 1200, quality = 0.8) => new Promise((resolve) => {
     try {
       const img = new Image();
@@ -53,11 +54,33 @@ export default function AdminErros() {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
       const msg = `Relato de Erro\nCategoria: ${categoria}\nAgente: ${agente || '—'}\nCPF: ${cpf || '—'}\nDescrição: ${descricao}\nImagens: ${imgs.length}`;
+
       if (apiUrl && defaultJid) {
+        // 1) Envia texto (opcional)
         try {
-          await fetch(apiUrl + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jid: defaultJid, mensagem: msg }) });
+          await fetch(apiUrl + '/send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jid: defaultJid, mensagem: msg })
+          });
         } catch {}
+        // 2) Envia cada imagem usando imageBase64 conforme especificação Bailey
+        for (const im of imgs) {
+          try {
+            const base64 = String(im.dataUrl || '').split(',')[1] || '';
+            if (!base64) continue;
+            await fetch(apiUrl + '/send', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jid: defaultJid,
+                imageBase64: base64,
+                caption: `Erro ${categoria} - ${descricao?.slice(0, 100) || ''}`
+              })
+            });
+          } catch {}
+        }
       }
+
+      // Sempre registra no painel
       await fetch('/api/requests', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agente: agente || null, cpf: cpf || null, tipo: `Erro - ${categoria}`, payload: { descricao, imagens: imgs }, agentContact: defaultJid || null, waMessageId: null })
@@ -66,9 +89,8 @@ export default function AdminErros() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'send_request', detail: { tipo: `Erro - ${categoria}`, cpf: cpf || null, imagens: imgs.length } })
       });
-      setOkMsg('Erro registrado com sucesso.');
-      setDescricao('');
-      setImgs([]);
+      setOkMsg('Erro registrado e imagens enviadas (se configurado).');
+      setDescricao(''); setImgs([]);
     } catch {
       alert('Falha ao registrar.');
     }

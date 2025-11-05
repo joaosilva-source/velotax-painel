@@ -38,7 +38,6 @@ export default function FormSolicitacao({ registrarLog }) {
     try { localStorage.setItem('velotax_local_logs', JSON.stringify(items)); } catch {}
   };
 
-
   const buscarCpf = async () => {
     const digits = String(buscaCpf || "").replace(/\D/g, "");
     if (!digits) {
@@ -292,6 +291,84 @@ export default function FormSolicitacao({ registrarLog }) {
         <span className="text-sm text-white/70">Envia para o grupo padrão configurado</span>
       </div>
 
+      {buscaResultados && buscaResultados.length > 0 && (
+        <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+            <h2 className="text-lg font-semibold">Histórico recente para {String(buscaCpf || form.cpf)}</h2>
+          </div>
+          <div className="space-y-2">
+            {buscaResultados.slice(0,5).map((r) => (
+              <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                  <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+                </div>
+                <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+          <h2 className="text-lg font-semibold">Consulta de CPF</h2>
+        </div>
+        <div className="flex flex-col md:flex-row gap-2 md:items-end mb-3">
+          <div className="flex-1">
+            <label className="text-sm text-black/80">CPF</label>
+            <input className="input" placeholder="Digite o CPF" value={buscaCpf} onChange={(e) => setBuscaCpf(e.target.value)} />
+          </div>
+          <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2" disabled={buscando}>{buscando ? 'Buscando...' : 'Buscar'}</button>
+        </div>
+        {buscaCpf && (
+          <div className="text-sm text-black/60 mb-2">{buscaResultados.length} registro(s) encontrado(s)</div>
+        )}
+        <div className="space-y-2 max-h-64 overflow-auto">
+          {buscaResultados.map((r) => (
+            <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+              <div>
+                <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+              </div>
+              <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+            </div>
+          ))}
+          {buscaCpf && !buscando && buscaResultados.length === 0 && (
+            <div className="text-black/60">Nenhum registro encontrado para este CPF.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Logs de Envio (para o agente acompanhar) */}
+      <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+          <h2 className="text-lg font-semibold">Logs de Envio</h2>
+          <button type="button" onClick={refreshNow} className="ml-auto text-sm px-2 py-1 rounded bg-black/5 hover:bg-black/10">Atualizar agora</button>
+        </div>
+        {(!localLogs || localLogs.length === 0) && (
+          <div className="text-black/60">Nenhum log ainda.</div>
+        )}
+        <div className="space-y-2">
+          {localLogs.map((l, idx) => {
+            const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+            return (
+              <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{icon}</span>
+                  <span className="text-sm">{l.cpf} — {l.tipo}</span>
+                </div>
+                <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </form>
   );
 }
+
+
