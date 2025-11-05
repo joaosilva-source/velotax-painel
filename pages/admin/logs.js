@@ -19,6 +19,20 @@ function formatItem(log) {
   if (a === 'auto_status_done') {
     return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} marcado via reação` };
   }
+
+function normalizeName(s) {
+  try {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // remove acentos
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ') // remove pontuação
+      .replace(/\s+/g, ' ') // espaços múltiplos
+      .trim();
+  } catch {
+    return String(s || '').toLowerCase().trim();
+  }
+}
   if (a === 'status_update') {
     const st = d.status || '';
     if (st === 'feito') return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'}` };
@@ -77,25 +91,47 @@ export default function AdminLogs() {
     ...formatItem(l)
   })), [items]);
 
-  const allAgents = useMemo(() => {
+  const agentGroups = useMemo(() => {
     const list = Array.isArray(requests) ? requests : [];
-    const set = new Set(list.map((r) => r?.agente || '—'));
-    return Array.from(set).sort();
+    const map = {};
+    for (const r of list) {
+      const raw = r?.agente || '—';
+      const key = normalizeName(raw) || '—';
+      if (!map[key]) map[key] = { key, label: raw, count: 0 };
+      map[key].count += 1;
+      // opcional: escolha label mais "bonita" pela maior frequência
+      // (mantemos primeira ocorrência para simplicidade)
+    }
+    return map;
+  }, [requests]);
+
+  const allAgents = useMemo(() => {
+    return Object.values(agentGroups).sort((a, b) => a.label.localeCompare(b.label));
+  }, [agentGroups]);
+
+  const typeGroups = useMemo(() => {
+    const list = Array.isArray(requests) ? requests : [];
+    const map = {};
+    for (const r of list) {
+      const raw = r?.tipo || 'Outro';
+      const key = normalizeName(raw) || 'outro';
+      if (!map[key]) map[key] = { key, label: raw, count: 0 };
+      map[key].count += 1;
+    }
+    return map;
   }, [requests]);
 
   const allTypes = useMemo(() => {
-    const list = Array.isArray(requests) ? requests : [];
-    const set = new Set(list.map((r) => r?.tipo || 'Outro'));
-    return Array.from(set).sort();
-  }, [requests]);
+    return Object.values(typeGroups).sort((a, b) => a.label.localeCompare(b.label));
+  }, [typeGroups]);
 
   const filteredRequests = useMemo(() => {
     const list = Array.isArray(requests) ? requests : [];
     const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
     const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null;
     return list.filter((r) => {
-      const agente = r?.agente || '—';
-      const tipo = r?.tipo || 'Outro';
+      const agente = normalizeName(r?.agente || '—') || '—';
+      const tipo = normalizeName(r?.tipo || 'Outro') || 'outro';
       const ts = r?.createdAt ? new Date(r.createdAt).getTime() : 0;
       if (selectedAgents.length && !selectedAgents.includes(agente)) return false;
       if (selectedTypes.length && !selectedTypes.includes(tipo)) return false;
@@ -111,17 +147,19 @@ export default function AdminLogs() {
     const byAgent = {};
     const byHour = Array.from({ length: 24 }, () => 0);
     for (const r of list) {
-      const tipo = r?.tipo || 'Outro';
-      const agente = r?.agente || '—';
-      byType[tipo] = (byType[tipo] || 0) + 1;
-      byAgent[agente] = (byAgent[agente] || 0) + 1;
+      const tipoKey = normalizeName(r?.tipo || 'Outro') || 'outro';
+      const agentKey = normalizeName(r?.agente || '—') || '—';
+      byType[tipoKey] = (byType[tipoKey] || 0) + 1;
+      byAgent[agentKey] = (byAgent[agentKey] || 0) + 1;
       const h = new Date(r?.createdAt).getHours?.() ?? new Date(r?.createdAt).getHours();
       if (Number.isFinite(h) && h >= 0 && h < 24) byHour[h] += 1;
     }
-    const typeLabels = Object.keys(byType);
-    const typeValues = typeLabels.map((k) => byType[k]);
-    const agentLabels = Object.keys(byAgent);
-    const agentValues = agentLabels.map((k) => byAgent[k]);
+    const typeEntries = Object.keys(byType).map((k) => ({ key: k, label: typeGroups[k]?.label || k, value: byType[k] }));
+    const agentEntries = Object.keys(byAgent).map((k) => ({ key: k, label: agentGroups[k]?.label || k, value: byAgent[k] }));
+    const typeLabels = typeEntries.map((e) => e.label);
+    const typeValues = typeEntries.map((e) => e.value);
+    const agentLabels = agentEntries.map((e) => e.label);
+    const agentValues = agentEntries.map((e) => e.value);
     const hourLabels = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
     return {
       byType: { labels: typeLabels, datasets: [{ label: 'Solicitações por tipo', data: typeValues, backgroundColor: 'rgba(59,130,246,0.6)' }] },
@@ -155,11 +193,11 @@ export default function AdminLogs() {
             <div className="text-sm mb-1">Agentes</div>
             <div className="flex flex-wrap gap-2">
               {allAgents.map((a) => (
-                <label key={a} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
-                  <input type="checkbox" checked={selectedAgents.includes(a)} onChange={(e) => {
-                    setSelectedAgents((prev) => e.target.checked ? [...prev, a] : prev.filter((x) => x !== a));
+                <label key={a.key} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
+                  <input type="checkbox" checked={selectedAgents.includes(a.key)} onChange={(e) => {
+                    setSelectedAgents((prev) => e.target.checked ? [...prev, a.key] : prev.filter((x) => x !== a.key));
                   }} />
-                  <span>{a}</span>
+                  <span>{a.label}</span>
                 </label>
               ))}
             </div>
@@ -168,11 +206,11 @@ export default function AdminLogs() {
             <div className="text-sm mb-1">Tipos</div>
             <div className="flex flex-wrap gap-2">
               {allTypes.map((t) => (
-                <label key={t} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
-                  <input type="checkbox" checked={selectedTypes.includes(t)} onChange={(e) => {
-                    setSelectedTypes((prev) => e.target.checked ? [...prev, t] : prev.filter((x) => x !== t));
+                <label key={t.key} className="flex items-center gap-1 text-sm border rounded px-2 py-1">
+                  <input type="checkbox" checked={selectedTypes.includes(t.key)} onChange={(e) => {
+                    setSelectedTypes((prev) => e.target.checked ? [...prev, t.key] : prev.filter((x) => x !== t.key));
                   }} />
-                  <span>{t}</span>
+                  <span>{t.label}</span>
                 </label>
               ))}
             </div>
