@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 export default function AdminSolicitacoes() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState('em aberto');
   const [loading, setLoading] = useState(false);
+  const [searchCpf, setSearchCpf] = useState('');
 
   const carregar = async () => {
     setLoading(true);
@@ -29,13 +30,22 @@ export default function AdminSolicitacoes() {
     await carregar();
   };
 
-  const filtrados = data.filter((r) => (status === 'todos' ? true : r.status === status));
+  const filtrados = useMemo(() => {
+    const digits = searchCpf.replace(/\D/g, '');
+    return data.filter((r) => {
+      const okStatus = (status === 'todos' ? true : r.status === status);
+      if (!okStatus) return false;
+      if (!digits) return true;
+      const cpf = String(r.cpf || '').replace(/\D/g, '');
+      return cpf.includes(digits);
+    });
+  }, [data, status, searchCpf]);
 
   return (
     <div className="min-h-screen container-pad py-8 max-w-6xl mx-auto">
       <h1 className="titulo-principal mb-4">Solicitações</h1>
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
         <label>Status:</label>
         <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="em aberto">Em aberto</option>
@@ -44,6 +54,11 @@ export default function AdminSolicitacoes() {
           <option value="todos">Todos</option>
         </select>
         <button className="btn-primary" onClick={carregar} disabled={loading}>{loading ? 'Atualizando...' : 'Atualizar'}</button>
+        <div className="md:ml-auto">
+          <label className="block text-sm mb-1">Pesquisar CPF</label>
+          <input value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} placeholder="Digite o CPF" className="w-full md:w-64 border rounded px-2 py-1" />
+          <div className="text-xs text-black/60 mt-1">{filtrados.length} registro(s) encontrado(s)</div>
+        </div>
       </div>
 
       <div className="space-y-3">
