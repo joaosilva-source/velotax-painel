@@ -10,7 +10,7 @@ export default function AdminErros() {
   const [okMsg, setOkMsg] = useState('');
 
   // compressão simples para reduzir tamanho (opcional)
-  const compressImage = (file, maxW = 1200, maxH = 1200, quality = 0.8) => new Promise((resolve) => {
+  const compressImage = (file, maxW = 1200, maxH = 1200, quality = 0.9) => new Promise((resolve) => {
     try {
       const img = new Image();
       const reader = new FileReader();
@@ -73,10 +73,11 @@ export default function AdminErros() {
               body: JSON.stringify({
                 jid: defaultJid,
                 imageBase64: base64,
-                caption: `Erro ${categoria} - ${descricao?.slice(0, 100) || ''}`
+                caption: `Erro ${categoria} - ${descricao?.slice(0, 100) || ''}`,
+                mimeType: 'image/jpeg'
               })
             });
-          } catch {}
+          } catch (e) { console.error('Falha ao enviar imagem', e); }
         }
       }
 
