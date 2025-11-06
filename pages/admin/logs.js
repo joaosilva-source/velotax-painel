@@ -25,10 +25,11 @@ function normalizeName(s) {
   } catch {
     return String(s || '').toLowerCase().trim();
   }
+}
 
 function isTestString(s) {
   const v = String(s || '').toLowerCase();
-  return v.includes('teste') || v.includes('test') || v.includes('debug');
+  return v.includes('teste') || v.includes('test') || v.includes('debug') || v.includes('check');
 }
 
 function isTestRequest(r) {
@@ -44,7 +45,6 @@ function canonicalizeAgentKey(raw) {
   }
   // Demais nomes: usar apenas primeiro token para agrupar variações (ex.: "joao", "joao s")
   return parts[0] || norm;
-}
 }
 
 function formatItem(log) {
@@ -263,9 +263,9 @@ export default function AdminLogs() {
       {searchCpf && (
         <div className="p-4 bg-white rounded border border-black/10 mb-6">
           <div className="font-medium mb-2">Resultados para CPF: {searchCpf}</div>
-          <div className="text-sm text-black/60 mb-2">{filteredRequests.filter((r) => String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).length} registro(s) encontrado(s)</div>
+          <div className="text-sm text-black/60 mb-2">{filteredRequests.filter((r) => !isTestRequest(r) && String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).length} registro(s) encontrado(s)</div>
           <div className="space-y-2 max-h-72 overflow-auto">
-            {filteredRequests.filter((r) => String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).map((r) => (
+            {filteredRequests.filter((r) => !isTestRequest(r) && String(r?.cpf || '').includes(searchCpf.replace(/\D/g, ''))).map((r) => (
               <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{r.tipo} — {r.cpf}</div>
