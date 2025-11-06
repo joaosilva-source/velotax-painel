@@ -108,7 +108,7 @@ export default function ErrosBugs() {
           agente,
           cpf,
           tipo: `Erro/Bug - ${tipo}`,
-          payload: { agente, cpf, tipo, descricao, imagens: imagens?.map(({ name, type, data }) => ({ name, type, size: (data||'').length })) },
+          payload: { agente, cpf, tipo, descricao, imagens: imagens?.map(({ name, type, data, preview }) => ({ name, type, size: (data||'').length })), previews: imagens?.map(({ preview }) => preview).filter(Boolean) },
           agentContact: defaultJid || null,
           waMessageId
         })
@@ -242,10 +242,24 @@ export default function ErrosBugs() {
                   <input type="file" accept="image/*" multiple onChange={async (e) => {
                 const files = Array.from(e.target.files || []);
                 const arr = [];
+                const makeThumb = (dataUrl) => new Promise((resolve) => {
+                  const img = new Image();
+                  img.onload = () => {
+                    const maxW = 400; const scale = Math.min(1, maxW / img.width);
+                    const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
+                    const c = document.createElement('canvas'); c.width = w; c.height = h;
+                    const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+                    resolve(c.toDataURL('image/jpeg', 0.8));
+                  };
+                  img.onerror = () => resolve(null);
+                  img.src = dataUrl;
+                });
                 for (const f of files) {
                   try {
-                    const data = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = err; r.readAsDataURL(f); });
-                    arr.push({ name: f.name, type: f.type || 'image/jpeg', data });
+                    const dataUrl = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = err; r.readAsDataURL(f); });
+                    const base64 = String(dataUrl).split(',')[1];
+                    const preview = await makeThumb(String(dataUrl));
+                    arr.push({ name: f.name, type: f.type || 'image/jpeg', data: base64, preview });
                   } catch {}
                 }
                 setImagens(arr);

@@ -3,8 +3,10 @@ import { useEffect, useState, useMemo } from 'react';
 export default function AdminSolicitacoes() {
   const [data, setData] = useState([]);
   const [status, setStatus] = useState('em aberto');
+  const [filterTipo, setFilterTipo] = useState('todos');
   const [loading, setLoading] = useState(false);
   const [searchCpf, setSearchCpf] = useState('');
+  const [expanded, setExpanded] = useState({}); // { [id]: bool }
 
   const carregar = async () => {
     setLoading(true);
@@ -30,16 +32,30 @@ export default function AdminSolicitacoes() {
     await carregar();
   };
 
+  const tipos = useMemo(() => {
+    const set = new Set();
+    data.forEach((r) => { if (r?.tipo) set.add(r.tipo); });
+    return ['todos', ...Array.from(set)];
+  }, [data]);
+
   const filtrados = useMemo(() => {
     const digits = searchCpf.replace(/\D/g, '');
     return data.filter((r) => {
       const okStatus = (status === 'todos' ? true : r.status === status);
+      const okTipo = (filterTipo === 'todos' ? true : r.tipo === filterTipo);
       if (!okStatus) return false;
+      if (!okTipo) return false;
       if (!digits) return true;
       const cpf = String(r.cpf || '').replace(/\D/g, '');
       return cpf.includes(digits);
     });
-  }, [data, status, searchCpf]);
+  }, [data, status, filterTipo, searchCpf]);
+
+  const getDescricao = (r) => {
+    const p = r?.payload || {};
+    if (String(r?.tipo || '').startsWith('Erro/Bug')) return p?.descricao || '';
+    return p?.observacoes || '';
+  };
 
   return (
     <div className="min-h-screen container-pad py-8 max-w-6xl mx-auto">
@@ -52,6 +68,12 @@ export default function AdminSolicitacoes() {
           <option value="feito">Feito</option>
           <option value="não feito">Não feito</option>
           <option value="todos">Todos</option>
+        </select>
+        <label>Tipo:</label>
+        <select className="input" value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)}>
+          {tipos.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
         </select>
         <button className="btn-primary" onClick={carregar} disabled={loading}>{loading ? 'Atualizando...' : 'Atualizar'}</button>
         <div className="md:ml-auto">
@@ -70,6 +92,33 @@ export default function AdminSolicitacoes() {
             </div>
             <div className="text-sm text-black/70">Agente: {r.agente} • CPF: {r.cpf}</div>
             <div className="text-sm">Status: <span className="font-medium">{r.status}</span></div>
+            {/* Descrição (expandível) */}
+            {(() => {
+              const full = getDescricao(r) || '';
+              const isLong = full.length > 160;
+              const short = isLong ? full.slice(0, 160) + '…' : full;
+              const isOpen = !!expanded[r.id];
+              return (
+                <div className="mt-2 text-sm text-black/80">
+                  <span>{isOpen ? full : short}</span>
+                  {isLong && (
+                    <button className="ml-2 text-sky-700 hover:underline" onClick={() => setExpanded((prev) => ({ ...prev, [r.id]: !isOpen }))}>
+                      {isOpen ? 'Ver menos' : 'Ver mais'}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Thumbnails (Erros/Bugs) */}
+            {String(r?.tipo || '').startsWith('Erro/Bug') && Array.isArray(r?.payload?.previews) && r.payload.previews.length > 0 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto">
+                {r.payload.previews.map((src, i) => (
+                  <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border" />
+                ))}
+              </div>
+            )}
+
             <div className="mt-2 flex items-center gap-2">
               <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={() => atualizar(r.id, 'feito')}>Marcar como feito</button>
               <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={() => atualizar(r.id, 'não feito')}>Marcar como não feito</button>
