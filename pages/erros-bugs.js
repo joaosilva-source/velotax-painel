@@ -164,9 +164,12 @@ export default function ErrosBugs() {
       <div className="min-h-screen container-pad py-10">
         <div className="max-w-3xl mx-auto animate-fadeUp">
           <div className="mb-6 surface p-6 flex items-center justify-between">
-            <div>
-              <h1 className="titulo-principal mb-1">Erros / Bugs</h1>
-              <p className="text-white/80">Reporte problemas com anexos de imagem para o time</p>
+            <div className="flex items-center gap-3">
+              <img src="/logo-velotax.png" alt="Velotax" className="h-8 w-auto" />
+              <div>
+                <h1 className="titulo-principal mb-1">Erros / Bugs</h1>
+                <p className="text-white/80">Reporte problemas com anexos de imagem para o time</p>
+              </div>
             </div>
             <a href="/" className="px-3 py-2 rounded bg-black/10 hover:bg-black/20 text-sm">← Voltar para a Home</a>
           </div>
@@ -315,6 +318,7 @@ export default function ErrosBugs() {
               <h2 className="text-lg font-semibold">Logs de Envio</h2>
               <button type="button" onClick={refreshNow} className="ml-auto text-sm px-2 py-1 rounded bg-black/5 hover:bg-black/10">Atualizar agora</button>
             </div>
+            <div className="max-h-72 overflow-auto pr-1">
             {(!localLogs || localLogs.length === 0) && (
               <div className="text-black/60">Nenhum log ainda.</div>
             )}
@@ -331,6 +335,7 @@ export default function ErrosBugs() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         </div>

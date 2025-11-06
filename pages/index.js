@@ -89,7 +89,9 @@ export default function Home() {
               <FormSolicitacao registrarLog={registrarLog} />
             </div>
             <div className="card hover:-translate-y-0.5 p-4">
-              <Logs logs={logs} />
+              <div className="max-h-72 overflow-auto pr-1">
+                <Logs logs={logs} />
+              </div>
             </div>
             <a href="/erros-bugs" className="block card hover:-translate-y-0.5 p-4 text-center">
               <div className="text-lg font-semibold mb-1">Erros / Bugs</div>

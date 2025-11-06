@@ -9,6 +9,18 @@ export default function AdminSolicitacoes() {
   const [expanded, setExpanded] = useState({}); // { [id]: bool }
   const [modalOpen, setModalOpen] = useState(false);
   const [modalImages, setModalImages] = useState([]); // array de dataURLs
+  const [modalIndex, setModalIndex] = useState(0);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setModalOpen(false);
+      if (e.key === 'ArrowRight') setModalIndex((i) => (i + 1) % (modalImages.length || 1));
+      if (e.key === 'ArrowLeft') setModalIndex((i) => (i - 1 + (modalImages.length || 1)) % (modalImages.length || 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [modalOpen, modalImages.length]);
 
   const carregar = async () => {
     setLoading(true);
@@ -133,7 +145,7 @@ export default function AdminSolicitacoes() {
                 return count > 0 ? (
                   <button
                     className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-sm"
-                    onClick={(e) => { e.stopPropagation(); setModalImages(buildImages()); setModalOpen(true); }}
+                    onClick={(e) => { e.stopPropagation(); const imgs = buildImages(); setModalImages(imgs); setModalIndex(0); setModalOpen(true); }}
                   >
                     Anexos: {count}
                   </button>
@@ -166,7 +178,7 @@ export default function AdminSolicitacoes() {
               return (
                 <div className="mt-3 flex gap-2 overflow-x-auto">
                   {imgs.map((src, i) => (
-                    <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setModalImages(imgs); setModalOpen(true); }} />
+                    <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setModalImages(imgs); setModalIndex(i); setModalOpen(true); }} />
                   ))}
                 </div>
               );
@@ -182,14 +194,15 @@ export default function AdminSolicitacoes() {
 
       {/* Modal/Lightbox */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => setModalOpen(false)}>
-          <div className="max-w-5xl max-h-[85vh] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-end mb-2"><button className="px-3 py-1 bg-white rounded" onClick={() => setModalOpen(false)}>Fechar</button></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {modalImages.map((src, i) => (
-                <img key={i} src={src} alt={`lightbox-${i}`} className="w-full h-auto rounded" />
-              ))}
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center" onClick={() => setModalOpen(false)}>
+          <div className="relative max-w-5xl w-full px-4" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute -top-10 right-4"><button className="px-3 py-1 bg-white rounded" onClick={() => setModalOpen(false)}>Fechar</button></div>
+            <div className="flex items-center justify-between gap-2">
+              <button className="px-3 py-2 bg-white/80 hover:bg-white rounded" onClick={() => setModalIndex((i) => (i - 1 + modalImages.length) % modalImages.length)}>←</button>
+              <img src={modalImages[modalIndex]} alt={`lightbox-${modalIndex}`} className="max-h-[80vh] w-auto mx-auto rounded" />
+              <button className="px-3 py-2 bg-white/80 hover:bg-white rounded" onClick={() => setModalIndex((i) => (i + 1) % modalImages.length)}>→</button>
             </div>
+            <div className="text-center text-white/80 mt-2 text-sm">{modalIndex + 1} / {modalImages.length}</div>
           </div>
         </div>
       )}
