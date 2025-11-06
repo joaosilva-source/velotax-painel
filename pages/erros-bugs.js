@@ -102,19 +102,21 @@ export default function ErrosBugs() {
 
     try {
       // 1) Enviar via WhatsApp se configurado
-      let res = { ok: false };
+      let waMessageId = null;
+      let messageIdsArr = [];
       if (apiUrl && defaultJid) {
-        res = await fetch(apiUrl + '/send', {
+        const resp = await fetch(`${apiUrl}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jid: defaultJid, mensagem: legenda, imagens })
+          body: JSON.stringify({
+            jid: defaultJid,
+            mensagem: montarLegenda(),
+            imagens
+          })
         });
-      }
-
-      // 2) Persistir SEMPRE
-      let waMessageId = null;
-      if (res && res.ok) {
-        try { const d = await res.json(); waMessageId = d?.messageId || d?.key?.id || null; } catch {}
+        const d = await resp.json().catch(() => ({}));
+        waMessageId = d?.messageId || d?.key?.id || null;
+        if (Array.isArray(d?.messageIds)) messageIdsArr = d.messageIds;
       }
 
       await fetch('/api/requests', {
@@ -124,7 +126,7 @@ export default function ErrosBugs() {
           agente,
           cpf,
           tipo: `Erro/Bug - ${tipo}`,
-          payload: { agente, cpf, tipo, descricao, imagens: imagens?.map(({ name, type, data, preview }) => ({ name, type, size: (data||'').length })), previews: imagens?.map(({ preview }) => preview).filter(Boolean) },
+          payload: { agente, cpf, tipo, descricao, imagens: imagens?.map(({ name, type, data, preview }) => ({ name, type, size: (data||'').length })), previews: imagens?.map(({ preview }) => preview).filter(Boolean), messageIds: messageIdsArr },
           agentContact: defaultJid || null,
           waMessageId
         })
@@ -165,7 +167,7 @@ export default function ErrosBugs() {
         <div className="max-w-3xl mx-auto animate-fadeUp">
           <div className="mb-6 surface p-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/logo-velotax.svg" alt="Velotax" className="h-8 w-auto" />
+              <img src="/brand/velotax-symbol.png" alt="Velotax" className="h-10 md:h-12 w-auto" />
               <div>
                 <h1 className="titulo-principal mb-1">Erros / Bugs</h1>
                 <p className="text-white/80">Reporte problemas com anexos de imagem para o time</p>
