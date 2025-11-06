@@ -20,7 +20,6 @@ export default function FormSolicitacao({ registrarLog }) {
   });
   const [loading, setLoading] = useState(false);
   const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
-  const [imagens, setImagens] = useState([]); // [{ name, type, data }]
   const [buscaCpf, setBuscaCpf] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [buscaResultados, setBuscaResultados] = useState([]);
@@ -117,9 +116,6 @@ export default function FormSolicitacao({ registrarLog }) {
     } else { // Exclusão de Chave PIX e outros
       msg += `Observações: ${form.observacoes || "—"}\n`;
     }
-    if (imagens && imagens.length) {
-      msg += `\n[Anexos: ${imagens.length} imagem(ns)]\n`;
-    }
     return msg;
   };
 
@@ -132,7 +128,7 @@ export default function FormSolicitacao({ registrarLog }) {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
-    const payload = { jid: defaultJid, mensagem: mensagemTexto, imagens };
+    const payload = { jid: defaultJid, mensagem: mensagemTexto };
 
     try {
       // 1) Tentar enviar via WhatsApp se configurado
@@ -162,7 +158,7 @@ export default function FormSolicitacao({ registrarLog }) {
           agente: form.agente,
           cpf: form.cpf,
           tipo: form.tipo,
-          payload: { ...form, imagens: imagens?.map(({ name, type, data }) => ({ name, type, size: (data||'').length })) },
+          payload: { ...form },
           agentContact: defaultJid || null,
           waMessageId,
         })
@@ -285,24 +281,7 @@ export default function FormSolicitacao({ registrarLog }) {
             </div>
           </div>
 
-          {/* Anexos de imagem */}
-          <div className="mt-4">
-            <label className="text-sm text-black/80">Anexos (imagens)</label>
-            <input type="file" accept="image/*" multiple onChange={async (e) => {
-              const files = Array.from(e.target.files || []);
-              const arr = [];
-              for (const f of files) {
-                try {
-                  const data = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = err; r.readAsDataURL(f); });
-                  arr.push({ name: f.name, type: f.type || 'image/jpeg', data });
-                } catch {}
-              }
-              setImagens(arr);
-            }} className="mt-1" />
-            {imagens && imagens.length > 0 && (
-              <div className="text-xs text-black/60 mt-2">{imagens.length} imagem(ns) anexada(s)</div>
-            )}
-          </div>
+          {/* Anexos removidos nesta tela */}
         </div>
       )}
 
