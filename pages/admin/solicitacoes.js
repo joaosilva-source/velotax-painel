@@ -7,6 +7,8 @@ export default function AdminSolicitacoes() {
   const [loading, setLoading] = useState(false);
   const [searchCpf, setSearchCpf] = useState('');
   const [expanded, setExpanded] = useState({}); // { [id]: bool }
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalImages, setModalImages] = useState([]); // array de dataURLs
 
   const carregar = async () => {
     setLoading(true);
@@ -76,6 +78,26 @@ export default function AdminSolicitacoes() {
           ))}
         </select>
         <button className="btn-primary" onClick={carregar} disabled={loading}>{loading ? 'Atualizando...' : 'Atualizar'}</button>
+        <button
+          className="px-3 py-2 rounded bg-black/10 hover:bg-black/20"
+          onClick={() => {
+            const rows = filtrados.map((r) => ({
+              id: r.id,
+              criado_em: new Date(r.createdAt).toISOString(),
+              tipo: r.tipo,
+              status: r.status,
+              agente: r.agente,
+              cpf: r.cpf,
+              descricao: (getDescricao(r) || '').replace(/\n/g,' ')
+            }));
+            const headers = Object.keys(rows[0] || { id:'',criado_em:'',tipo:'',status:'',agente:'',cpf:'',descricao:'' });
+            const csv = [headers.join(';'), ...rows.map(o => headers.map(h => `"${String(o[h] ?? '').replace(/"/g,'""')}"`).join(';'))].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'solicitacoes.csv'; a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >Exportar CSV</button>
         <div className="md:ml-auto">
           <label className="block text-sm mb-1">Pesquisar CPF</label>
           <input value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} placeholder="Digite o CPF" className="w-full md:w-64 border rounded px-2 py-1" />
@@ -85,7 +107,11 @@ export default function AdminSolicitacoes() {
 
       <div className="space-y-3">
         {filtrados.map((r) => (
-          <div key={r.id} className="p-4 bg-white rounded-lg border border-black/10">
+          <div
+            key={r.id}
+            className="p-4 bg-white rounded-lg border border-black/10 cursor-pointer"
+            onClick={() => setExpanded((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
+          >
             <div className="font-semibold flex flex-wrap items-center gap-2">
               {/* Tipo */}
               <span className="px-2 py-0.5 rounded-full bg-black/5 text-black/80 text-sm">{r.tipo}</span>
@@ -100,7 +126,14 @@ export default function AdminSolicitacoes() {
               {/* Anexos */}
               {(() => {
                 const count = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
-                return count > 0 ? (<span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-sm">Anexos: {count}</span>) : null;
+                return count > 0 ? (
+                  <button
+                    className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-sm"
+                    onClick={(e) => { e.stopPropagation(); setModalImages(r?.payload?.previews || []); setModalOpen(true); }}
+                  >
+                    Anexos: {count}
+                  </button>
+                ) : null;
               })()}
             </div>
             {/* Descrição (expandível) */}
@@ -125,18 +158,32 @@ export default function AdminSolicitacoes() {
             {String(r?.tipo || '').startsWith('Erro/Bug') && Array.isArray(r?.payload?.previews) && r.payload.previews.length > 0 && (
               <div className="mt-3 flex gap-2 overflow-x-auto">
                 {r.payload.previews.map((src, i) => (
-                  <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border" />
+                  <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setModalImages(r.payload.previews); setModalOpen(true); }} />
                 ))}
               </div>
             )}
 
             <div className="mt-2 flex items-center gap-2">
-              <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={() => atualizar(r.id, 'feito')}>Marcar como feito</button>
-              <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={() => atualizar(r.id, 'não feito')}>Marcar como não feito</button>
+              <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={(e) => { e.stopPropagation(); atualizar(r.id, 'feito'); }}>Marcar como feito</button>
+              <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={(e) => { e.stopPropagation(); atualizar(r.id, 'não feito'); }}>Marcar como não feito</button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Modal/Lightbox */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={() => setModalOpen(false)}>
+          <div className="max-w-5xl max-h-[85vh] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end mb-2"><button className="px-3 py-1 bg-white rounded" onClick={() => setModalOpen(false)}>Fechar</button></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {modalImages.map((src, i) => (
+                <img key={i} src={src} alt={`lightbox-${i}`} className="w-full h-auto rounded" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

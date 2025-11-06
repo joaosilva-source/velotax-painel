@@ -175,7 +175,13 @@ export default function ErrosBugs() {
                 {searchResults.slice(0,8).map((r) => (
                   <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
                     <div>
-                      <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                      <div className="font-medium flex items-center gap-2">
+                        <span>{r.tipo} — {r.cpf}</span>
+                        {(() => {
+                          const count = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
+                          return count > 0 ? (<span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-xs">Anexos: {count}</span>) : null;
+                        })()}
+                      </div>
                       <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
                     </div>
                     <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
