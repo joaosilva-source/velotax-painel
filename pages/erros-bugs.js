@@ -27,6 +27,22 @@ export default function ErrosBugs() {
     try { localStorage.setItem('velotax_local_logs_bugs', JSON.stringify(items)); } catch {}
   };
 
+  // util para gerar thumbnail (~400px)
+  const makeThumb = (dataUrl) => new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 400; const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale); const h = Math.round(img.height * scale);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => resolve(null);
+      img.src = dataUrl;
+    } catch { resolve(null); }
+  });
+
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
     if (!digits) { setSearchResults([]); return; }
@@ -230,8 +246,10 @@ export default function ErrosBugs() {
                     try {
                       const file = it.getAsFile();
                       if (!file) continue;
-                      const data = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = err; r.readAsDataURL(file); });
-                      arr.push({ name: file.name || 'clipboard.png', type: file.type || 'image/png', data });
+                      const dataUrl = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = err; r.readAsDataURL(file); });
+                      const base64 = String(dataUrl).split(',')[1];
+                      const preview = await makeThumb(String(dataUrl));
+                      arr.push({ name: file.name || 'clipboard.png', type: file.type || 'image/png', data: base64, preview });
                     } catch {}
                   }
                   setImagens(arr);
@@ -268,12 +286,19 @@ export default function ErrosBugs() {
                     arr.push({ name: f.name, type: f.type || 'image/jpeg', data: base64, preview });
                   } catch {}
                 }
-                setImagens(arr);
+                setImagens(prev => [...prev, ...arr]);
               }} className="hidden" />
                 </label>
               </div>
               {imagens && imagens.length > 0 && (
-                <div className="text-xs text-black/60 mt-2">{imagens.length} imagem(ns) anexada(s)</div>
+                <>
+                  <div className="text-xs text-black/60 mt-2">{imagens.length} imagem(ns) anexada(s)</div>
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {imagens.map((im, idx) => (
+                      <img key={idx} src={im.preview ? im.preview : (im.data ? `data:${im.type||'image/jpeg'};base64,${im.data}` : '')} alt={`anexo-${idx}`} className="h-16 w-auto rounded border" />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 

@@ -125,11 +125,15 @@ export default function AdminSolicitacoes() {
               {r.cpf && <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-sm">CPF: {r.cpf}</span>}
               {/* Anexos */}
               {(() => {
-                const count = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
+                const previews = Array.isArray(r?.payload?.previews) ? r.payload.previews : [];
+                const count = previews.length;
+                const buildImages = () => {
+                  return previews;
+                };
                 return count > 0 ? (
                   <button
                     className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-sm"
-                    onClick={(e) => { e.stopPropagation(); setModalImages(r?.payload?.previews || []); setModalOpen(true); }}
+                    onClick={(e) => { e.stopPropagation(); setModalImages(buildImages()); setModalOpen(true); }}
                   >
                     Anexos: {count}
                   </button>
@@ -155,13 +159,18 @@ export default function AdminSolicitacoes() {
             })()}
 
             {/* Thumbnails (Erros/Bugs) */}
-            {String(r?.tipo || '').startsWith('Erro/Bug') && Array.isArray(r?.payload?.previews) && r.payload.previews.length > 0 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto">
-                {r.payload.previews.map((src, i) => (
-                  <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setModalImages(r.payload.previews); setModalOpen(true); }} />
-                ))}
-              </div>
-            )}
+            {String(r?.tipo || '').startsWith('Erro/Bug') && (() => {
+              const previews = Array.isArray(r?.payload?.previews) ? r.payload.previews : [];
+              const imgs = previews;
+              if (!imgs.length) return null;
+              return (
+                <div className="mt-3 flex gap-2 overflow-x-auto">
+                  {imgs.map((src, i) => (
+                    <img key={i} src={src} alt={`preview-${i}`} className="h-20 w-auto rounded border cursor-zoom-in" onClick={(e) => { e.stopPropagation(); setModalImages(imgs); setModalOpen(true); }} />
+                  ))}
+                </div>
+              );
+            })()}
 
             <div className="mt-2 flex items-center gap-2">
               <button className="px-3 py-1 bg-green-600 text-white rounded" onClick={(e) => { e.stopPropagation(); atualizar(r.id, 'feito'); }}>Marcar como feito</button>
