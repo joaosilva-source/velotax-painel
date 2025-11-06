@@ -25,6 +25,26 @@ function normalizeName(s) {
   } catch {
     return String(s || '').toLowerCase().trim();
   }
+
+function isTestString(s) {
+  const v = String(s || '').toLowerCase();
+  return v.includes('teste') || v.includes('test') || v.includes('debug');
+}
+
+function isTestRequest(r) {
+  return isTestString(r?.tipo) || isTestString(r?.agente) || isTestString(r?.payload?.descricao);
+}
+
+// Unificação de nomes semelhantes, exceto Laura (separa por duas primeiras palavras)
+function canonicalizeAgentKey(raw) {
+  const norm = normalizeName(raw || '—') || '—';
+  const parts = norm.split(' ').filter(Boolean);
+  if (parts[0] === 'laura') {
+    return parts.slice(0, 2).join(' ') || 'laura';
+  }
+  // Demais nomes: usar apenas primeiro token para agrupar variações (ex.: "joao", "joao s")
+  return parts[0] || norm;
+}
 }
 
 function formatItem(log) {
@@ -85,18 +105,27 @@ export default function AdminLogs() {
     return () => clearInterval(id);
   }, []);
 
-  const rows = useMemo(() => (Array.isArray(items) ? items : []).map((l) => ({
-    id: l.id,
-    createdAt: new Date(l.createdAt).toLocaleString(),
-    ...formatItem(l)
-  })), [items]);
+  const rows = useMemo(() => {
+    const list = Array.isArray(items) ? items : [];
+    return list
+      .filter((l) => {
+        const d = l?.detail || {};
+        // remover eventos de teste visuais
+        return !(isTestString(d?.tipo) || isTestString(d?.agente));
+      })
+      .map((l) => ({
+        id: l.id,
+        createdAt: new Date(l.createdAt).toLocaleString(),
+        ...formatItem(l)
+      }));
+  }, [items]);
 
   const agentGroups = useMemo(() => {
-    const list = Array.isArray(requests) ? requests : [];
+    const list = (Array.isArray(requests) ? requests : []).filter((r) => !isTestRequest(r));
     const map = {};
     for (const r of list) {
       const raw = r?.agente || '—';
-      const key = normalizeName(raw) || '—';
+      const key = canonicalizeAgentKey(raw) || '—';
       if (!map[key]) map[key] = { key, label: raw, count: 0 };
       map[key].count += 1;
       // opcional: escolha label mais "bonita" pela maior frequência
@@ -110,7 +139,7 @@ export default function AdminLogs() {
   }, [agentGroups]);
 
   const typeGroups = useMemo(() => {
-    const list = Array.isArray(requests) ? requests : [];
+    const list = (Array.isArray(requests) ? requests : []).filter((r) => !isTestRequest(r));
     const map = {};
     for (const r of list) {
       const raw = r?.tipo || 'Outro';
@@ -126,11 +155,11 @@ export default function AdminLogs() {
   }, [typeGroups]);
 
   const filteredRequests = useMemo(() => {
-    const list = Array.isArray(requests) ? requests : [];
+    const list = (Array.isArray(requests) ? requests : []).filter((r) => !isTestRequest(r));
     const fromTs = dateFrom ? new Date(dateFrom + 'T00:00:00').getTime() : null;
     const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null;
     return list.filter((r) => {
-      const agente = normalizeName(r?.agente || '—') || '—';
+      const agente = canonicalizeAgentKey(r?.agente || '—') || '—';
       const tipo = normalizeName(r?.tipo || 'Outro') || 'outro';
       const ts = r?.createdAt ? new Date(r.createdAt).getTime() : 0;
       if (selectedAgents.length && !selectedAgents.includes(agente)) return false;
@@ -148,7 +177,7 @@ export default function AdminLogs() {
     const byHour = Array.from({ length: 24 }, () => 0);
     for (const r of list) {
       const tipoKey = normalizeName(r?.tipo || 'Outro') || 'outro';
-      const agentKey = normalizeName(r?.agente || '—') || '—';
+      const agentKey = canonicalizeAgentKey(r?.agente || '—') || '—';
       byType[tipoKey] = (byType[tipoKey] || 0) + 1;
       byAgent[agentKey] = (byAgent[agentKey] || 0) + 1;
       const h = new Date(r?.createdAt).getHours?.() ?? new Date(r?.createdAt).getHours();
