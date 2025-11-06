@@ -20,6 +20,7 @@ export default function FormSolicitacao({ registrarLog }) {
   });
   const [loading, setLoading] = useState(false);
   const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
+  const [imagens, setImagens] = useState([]); // [{ name, type, data }]
   const [buscaCpf, setBuscaCpf] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [buscaResultados, setBuscaResultados] = useState([]);
@@ -116,6 +117,9 @@ export default function FormSolicitacao({ registrarLog }) {
     } else { // Exclusão de Chave PIX e outros
       msg += `Observações: ${form.observacoes || "—"}\n`;
     }
+    if (imagens && imagens.length) {
+      msg += `\n[Anexos: ${imagens.length} imagem(ns)]\n`;
+    }
     return msg;
   };
 
@@ -128,7 +132,7 @@ export default function FormSolicitacao({ registrarLog }) {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
-    const payload = { jid: defaultJid, mensagem: mensagemTexto };
+    const payload = { jid: defaultJid, mensagem: mensagemTexto, imagens };
 
     try {
       // 1) Tentar enviar via WhatsApp se configurado
@@ -158,7 +162,7 @@ export default function FormSolicitacao({ registrarLog }) {
           agente: form.agente,
           cpf: form.cpf,
           tipo: form.tipo,
-          payload: form,
+          payload: { ...form, imagens: imagens?.map(({ name, type, data }) => ({ name, type, size: (data||'').length })) },
           agentContact: defaultJid || null,
           waMessageId,
         })
@@ -258,7 +262,12 @@ export default function FormSolicitacao({ registrarLog }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-black/80">Tipo de informação</label>
-              <input className="input" value={form.infoTipo} onChange={(e) => atualizar("infoTipo", e.target.value)} placeholder="Ex: E-mail"/>
+              <select className="input" value={form.infoTipo} onChange={(e) => atualizar("infoTipo", e.target.value)}>
+                <option value="Telefone">Telefone</option>
+                <option value="E-mail">E-mail</option>
+                <option value="Nome">Nome</option>
+                <option value="Outro">Outro</option>
+              </select>
             </div>
             <div className="flex items-center pt-7 gap-2">
               <input type="checkbox" className="w-4 h-4" checked={form.fotosVerificadas} onChange={(e) => atualizar("fotosVerificadas", e.target.checked)} />
@@ -274,6 +283,25 @@ export default function FormSolicitacao({ registrarLog }) {
               <label className="text-sm text-black/80">Dado novo</label>
               <input className="input" value={form.dadoNovo} onChange={(e) => atualizar("dadoNovo", e.target.value)} />
             </div>
+          </div>
+
+          {/* Anexos de imagem */}
+          <div className="mt-4">
+            <label className="text-sm text-black/80">Anexos (imagens)</label>
+            <input type="file" accept="image/*" multiple onChange={async (e) => {
+              const files = Array.from(e.target.files || []);
+              const arr = [];
+              for (const f of files) {
+                try {
+                  const data = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = err; r.readAsDataURL(f); });
+                  arr.push({ name: f.name, type: f.type || 'image/jpeg', data });
+                } catch {}
+              }
+              setImagens(arr);
+            }} className="mt-1" />
+            {imagens && imagens.length > 0 && (
+              <div className="text-xs text-black/60 mt-2">{imagens.length} imagem(ns) anexada(s)</div>
+            )}
           </div>
         </div>
       )}
@@ -311,36 +339,7 @@ export default function FormSolicitacao({ registrarLog }) {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-          <h2 className="text-lg font-semibold">Consulta de CPF</h2>
-        </div>
-        <div className="flex flex-col md:flex-row gap-2 md:items-end mb-3">
-          <div className="flex-1">
-            <label className="text-sm text-black/80">CPF</label>
-            <input className="input" placeholder="Digite o CPF" value={buscaCpf} onChange={(e) => setBuscaCpf(e.target.value)} />
-          </div>
-          <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2" disabled={buscando}>{buscando ? 'Buscando...' : 'Buscar'}</button>
-        </div>
-        {buscaCpf && (
-          <div className="text-sm text-black/60 mb-2">{buscaResultados.length} registro(s) encontrado(s)</div>
-        )}
-        <div className="space-y-2 max-h-64 overflow-auto">
-          {buscaResultados.map((r) => (
-            <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-              <div>
-                <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
-              </div>
-              <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
-            </div>
-          ))}
-          {buscaCpf && !buscando && buscaResultados.length === 0 && (
-            <div className="text-black/60">Nenhum registro encontrado para este CPF.</div>
-          )}
-        </div>
-      </div>
+      {/* Consulta de CPF (removida por solicitação) */}
 
       {/* Logs de Envio (para o agente acompanhar) */}
       <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-4">
