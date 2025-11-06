@@ -165,7 +165,7 @@ export default function ErrosBugs() {
         <div className="max-w-3xl mx-auto animate-fadeUp">
           <div className="mb-6 surface p-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img src="/logo-velotax.png" alt="Velotax" className="h-8 w-auto" />
+              <img src="/logo-velotax.svg" alt="Velotax" className="h-8 w-auto" />
               <div>
                 <h1 className="titulo-principal mb-1">Erros / Bugs</h1>
                 <p className="text-white/80">Reporte problemas com anexos de imagem para o time</p>
