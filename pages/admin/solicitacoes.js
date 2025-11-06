@@ -86,12 +86,23 @@ export default function AdminSolicitacoes() {
       <div className="space-y-3">
         {filtrados.map((r) => (
           <div key={r.id} className="p-4 bg-white rounded-lg border border-black/10">
-            <div className="font-semibold flex items-center gap-2">
-              <span>{r.tipo}</span>
-              {r.status === 'feito' && <span className="inline-flex items-center gap-1 text-green-700 text-sm"><span>✅</span><span>Feito</span></span>}
+            <div className="font-semibold flex flex-wrap items-center gap-2">
+              {/* Tipo */}
+              <span className="px-2 py-0.5 rounded-full bg-black/5 text-black/80 text-sm">{r.tipo}</span>
+              {/* Status */}
+              <span className={`px-2 py-0.5 rounded-full text-sm ${r.status === 'feito' ? 'bg-emerald-100 text-emerald-800' : (r.status === 'não feito' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}`}>
+                {r.status === 'feito' ? '✅ Feito' : (r.status === 'não feito' ? '❌ Não feito' : '⏳ Em aberto')}
+              </span>
+              {/* Agente */}
+              {r.agente && <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 text-sm">Agente: {r.agente}</span>}
+              {/* CPF */}
+              {r.cpf && <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-sm">CPF: {r.cpf}</span>}
+              {/* Anexos */}
+              {(() => {
+                const count = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
+                return count > 0 ? (<span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-sm">Anexos: {count}</span>) : null;
+              })()}
             </div>
-            <div className="text-sm text-black/70">Agente: {r.agente} • CPF: {r.cpf}</div>
-            <div className="text-sm">Status: <span className="font-medium">{r.status}</span></div>
             {/* Descrição (expandível) */}
             {(() => {
               const full = getDescricao(r) || '';
