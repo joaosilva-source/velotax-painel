@@ -1,5 +1,5 @@
 // pages/erros-bugs.js
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 
 export default function ErrosBugs() {
@@ -10,6 +10,41 @@ export default function ErrosBugs() {
   const [imagens, setImagens] = useState([]); // [{ name, type, data }]
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
+
+  // cache helpers
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('velotax_local_logs_bugs');
+      if (cached) setLocalLogs(JSON.parse(cached));
+    } catch {}
+  }, []);
+  const saveCache = (items) => {
+    setLocalLogs(items);
+    try { localStorage.setItem('velotax_local_logs_bugs', JSON.stringify(items)); } catch {}
+  };
+
+  const refreshNow = async () => {
+    if (!localLogs.length) return;
+    try {
+      const res = await fetch('/api/requests');
+      if (!res.ok) return;
+      const all = await res.json();
+      const updated = localLogs.map(item => {
+        const match = item.waMessageId
+          ? all.find(r => r.waMessageId === item.waMessageId)
+          : all.find(r => r.cpf === item.cpf && String(r.tipo||'').startsWith('Erro/Bug'));
+        return match ? { ...item, status: match.status } : item;
+      });
+      saveCache(updated);
+    } catch {}
+  };
+  useEffect(() => {
+    const tick = async () => { await refreshNow(); };
+    tick();
+    const id = setInterval(tick, 20000);
+    return () => clearInterval(id);
+  }, [localLogs.length]);
 
   const montarLegenda = () => {
     let m = `*Novo Erro/Bug - ${tipo}*\n\n`;
@@ -66,6 +101,16 @@ export default function ErrosBugs() {
         body: JSON.stringify({ action: 'send_request', detail: { tipo: `Erro/Bug - ${tipo}`, cpf, waMessageId, whatsappSent: !!(apiUrl && defaultJid) } })
       });
 
+      // add to local logs cache
+      const newItem = {
+        cpf,
+        tipo: `Erro/Bug - ${tipo}`,
+        waMessageId,
+        status: 'em aberto',
+        createdAt: new Date().toISOString()
+      };
+      saveCache([newItem, ...localLogs].slice(0, 50));
+
       setMsg(apiUrl && defaultJid ? 'Enviado e registrado com sucesso.' : 'Registrado no painel. WhatsApp não configurado.');
       setAgente(''); setCpf(''); setDescricao(''); setImagens([]);
     } catch (err) {
@@ -114,12 +159,37 @@ export default function ErrosBugs() {
 
             <div>
               <label className="text-sm text-black/80">Descrição</label>
-              <textarea className="input h-32" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Explique o problema, passos para reproduzir, telas envolvidas..." />
+              <textarea
+                className="input h-32"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Explique o problema, passos para reproduzir, telas envolvidas...\n(Dica: você pode colar imagens aqui)"
+                onPaste={async (e) => {
+                  const items = Array.from(e.clipboardData?.items || []);
+                  const imgs = items.filter(it => it.type && it.type.startsWith('image/'));
+                  if (!imgs.length) return;
+                  e.preventDefault();
+                  const arr = [...imagens];
+                  for (const it of imgs) {
+                    try {
+                      const file = it.getAsFile();
+                      if (!file) continue;
+                      const data = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = err; r.readAsDataURL(file); });
+                      arr.push({ name: file.name || 'clipboard.png', type: file.type || 'image/png', data });
+                    } catch {}
+                  }
+                  setImagens(arr);
+                }}
+              />
             </div>
 
             <div>
               <label className="text-sm text-black/80">Anexos (imagens)</label>
-              <input type="file" accept="image/*" multiple onChange={async (e) => {
+              <div className="mt-1 p-4 border-2 border-dashed rounded-lg text-center bg-white hover:bg-black/5">
+                <div className="mb-2 text-black/70">Arraste e solte aqui, clique para selecionar ou cole imagens no campo de descrição</div>
+                <label className="inline-block px-3 py-2 rounded bg-sky-600 text-white cursor-pointer hover:bg-sky-700">
+                  Selecionar imagens
+                  <input type="file" accept="image/*" multiple onChange={async (e) => {
                 const files = Array.from(e.target.files || []);
                 const arr = [];
                 for (const f of files) {
@@ -129,7 +199,9 @@ export default function ErrosBugs() {
                   } catch {}
                 }
                 setImagens(arr);
-              }} className="mt-1" />
+              }} className="hidden" />
+                </label>
+              </div>
               {imagens && imagens.length > 0 && (
                 <div className="text-xs text-black/60 mt-2">{imagens.length} imagem(ns) anexada(s)</div>
               )}
@@ -140,6 +212,32 @@ export default function ErrosBugs() {
               {msg && <span className="text-sm text-black/70">{msg}</span>}
             </div>
           </form>
+
+          {/* Logs de Envio */}
+          <div className="bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10 mt-6">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+              <h2 className="text-lg font-semibold">Logs de Envio</h2>
+              <button type="button" onClick={refreshNow} className="ml-auto text-sm px-2 py-1 rounded bg-black/5 hover:bg-black/10">Atualizar agora</button>
+            </div>
+            {(!localLogs || localLogs.length === 0) && (
+              <div className="text-black/60">Nenhum log ainda.</div>
+            )}
+            <div className="space-y-2">
+              {localLogs.map((l, idx) => {
+                const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+                return (
+                  <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{icon}</span>
+                      <span className="text-sm">{l.cpf || '—'} — {l.tipo}</span>
+                    </div>
+                    <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </>
