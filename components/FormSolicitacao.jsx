@@ -142,6 +142,21 @@ export default function FormSolicitacao({ registrarLog }) {
     setLoading(true);
     registrarLog("Iniciando envio...");
 
+    const notifyError = (title, body) => {
+      try {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') {
+            new Notification(title, { body });
+          } else {
+            // tenta pedir permissão uma única vez
+            Notification.requestPermission().then((p) => {
+              if (p === 'granted') new Notification(title, { body });
+            }).catch(()=>{});
+          }
+        }
+      } catch {}
+    };
+
     // garantir nome do agente normalizado e em cache
     let agenteNorm = form.agente && form.agente.trim() ? toTitleCase(form.agente) : '';
     if (!agenteNorm) {
@@ -209,6 +224,7 @@ export default function FormSolicitacao({ registrarLog }) {
         const txt = await res.text();
         registrarLog("❌ Erro da API: " + txt);
         toast.error("Erro ao enviar: " + txt);
+        notifyError('Falha ao enviar solicitação', txt || 'Erro desconhecido da API');
       }
 
       const newItem = {
@@ -222,6 +238,7 @@ export default function FormSolicitacao({ registrarLog }) {
     } catch (err) {
       registrarLog("❌ Falha de conexão com a API.");
       toast.error("Falha de conexão. A API está no ar?");
+      notifyError('Falha de conexão', 'Não foi possível contactar a API do WhatsApp');
     } finally {
       setLoading(false);
     }

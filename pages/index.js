@@ -1,7 +1,7 @@
 // pages/index.js
 import { useEffect, useRef, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
-import Logs from "@/components/Logs";
+// Logs removidos da lateral para reduzir poluição visual
 import Head from "next/head";
 
 export default function Home() {
@@ -17,6 +17,7 @@ export default function Home() {
   const [agentHistoryLoading, setAgentHistoryLoading] = useState(false);
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -151,7 +152,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 card hover:-translate-y-0.5 p-6">
+            <div className="lg:col-span-3 card hover:-translate-y-0.5 p-6">
               <div className="mb-6 flex items-center justify-between gap-3">
                 <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
                   <div className="surface p-3 rounded-xl text-center">
@@ -203,37 +204,39 @@ export default function Home() {
               <div className="section-title">Formulário de Solicitação</div>
               <FormSolicitacao registrarLog={registrarLog} />
             </div>
-            <div className="card hover:-translate-y-0.5 p-4">
-              <div className="max-h-72 overflow-auto pr-1">
-                <Logs logs={logs} />
-              </div>
-            </div>
-            <div className="card hover:-translate-y-0.5 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-                <h2 className="text-lg font-semibold">Histórico do agente</h2>
-                <span className="ml-auto text-sm opacity-70">{selectedAgent || '—'}</span>
-              </div>
-              {agentHistoryLoading && <div className="text-sm opacity-70">Carregando…</div>}
-              {!agentHistoryLoading && agentHistory.length === 0 && (
-                <div className="text-sm opacity-70">Nenhum registro.</div>
-              )}
-              <div className="space-y-2 max-h-72 overflow-auto pr-1 mt-2">
-                {agentHistory.slice(0, agentHistoryLimit).map((r) => (
-                  <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                      <div className="text-xs text-black/60">Status: {r.status || '—'}</div>
-                    </div>
-                    <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+            <div className="lg:col-span-3 card hover:-translate-y-0.5 p-4">
+              <button type="button" onClick={() => setHistoryOpen((v)=>!v)} className="w-full text-left">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+                  <h2 className="text-lg font-semibold">Histórico do agente</h2>
+                  <span className="ml-auto text-sm opacity-70">{selectedAgent || '—'}</span>
+                  <span className="text-sm opacity-70 ml-2">{historyOpen ? 'Recolher' : 'Expandir'}</span>
+                </div>
+              </button>
+              {historyOpen && (
+                <div className="mt-3">
+                  {agentHistoryLoading && <div className="text-sm opacity-70">Carregando…</div>}
+                  {!agentHistoryLoading && agentHistory.length === 0 && (
+                    <div className="text-sm opacity-70">Nenhum registro.</div>
+                  )}
+                  <div className="space-y-2 max-h-72 overflow-auto pr-1 mt-2">
+                    {agentHistory.slice(0, agentHistoryLimit).map((r) => (
+                      <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                          <div className="text-xs text-black/60">Status: {r.status || '—'}</div>
+                        </div>
+                        <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              {agentHistory.length > agentHistoryLimit && (
-                <div className="mt-3 text-right">
-                  <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90">
-                    Carregar mais ({agentHistory.length - agentHistoryLimit} restantes)
-                  </button>
+                  {agentHistory.length > agentHistoryLimit && (
+                    <div className="mt-3 text-right">
+                      <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90">
+                        Carregar mais ({agentHistory.length - agentHistoryLimit} restantes)
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
