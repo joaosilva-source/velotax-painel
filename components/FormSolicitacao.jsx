@@ -24,13 +24,23 @@ export default function FormSolicitacao({ registrarLog }) {
   const [buscando, setBuscando] = useState(false);
   const [buscaResultados, setBuscaResultados] = useState([]);
 
+  // util: normalizar nome do agente (Title Case, espaços simples)
+  const toTitleCase = (s = '') => {
+    const lower = String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+    const keepLower = new Set(['da','de','do','das','dos','e']);
+    return lower.split(' ').filter(Boolean).map((p, i) => {
+      if (i > 0 && keepLower.has(p)) return p;
+      return p.charAt(0).toUpperCase() + p.slice(1);
+    }).join(' ');
+  };
+
   // carregar cache inicial
   useEffect(() => {
     try {
       const cached = localStorage.getItem('velotax_local_logs');
       if (cached) setLocalLogs(JSON.parse(cached));
       const agent = localStorage.getItem('velotax_agent');
-      if (agent) setForm((prev) => ({ ...prev, agente: agent }));
+      if (agent) setForm((prev) => ({ ...prev, agente: toTitleCase(agent) }));
     } catch {}
   }, []);
 
@@ -102,7 +112,8 @@ export default function FormSolicitacao({ registrarLog }) {
   const atualizar = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }));
     if (campo === 'agente') {
-      try { localStorage.setItem('velotax_agent', valor); } catch {}
+      const norm = toTitleCase(valor);
+      try { localStorage.setItem('velotax_agent', norm); } catch {}
     }
   };
 
@@ -130,6 +141,16 @@ export default function FormSolicitacao({ registrarLog }) {
     e.preventDefault();
     setLoading(true);
     registrarLog("Iniciando envio...");
+
+    // garantir nome do agente normalizado e em cache
+    let agenteNorm = form.agente && form.agente.trim() ? toTitleCase(form.agente) : '';
+    if (!agenteNorm) {
+      try { agenteNorm = toTitleCase(localStorage.getItem('velotax_agent') || ''); } catch {}
+      if (agenteNorm) setForm((prev) => ({ ...prev, agente: agenteNorm }));
+    }
+    if (agenteNorm) {
+      try { localStorage.setItem('velotax_agent', agenteNorm); } catch {}
+    }
 
     const mensagemTexto = montarMensagem();
 
@@ -162,7 +183,7 @@ export default function FormSolicitacao({ registrarLog }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agente: form.agente,
+          agente: agenteNorm || form.agente,
           cpf: form.cpf,
           tipo: form.tipo,
           payload: { ...form },
@@ -216,7 +237,7 @@ export default function FormSolicitacao({ registrarLog }) {
             <span className="input-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg>
             </span>
-            <input className="input input-with-icon" placeholder="Nome do agente" value={form.agente} onChange={(e) => atualizar("agente", e.target.value)} required />
+            <input className="input input-with-icon" placeholder="Nome do agente" value={form.agente} onChange={(e) => atualizar("agente", e.target.value)} onBlur={(e)=> atualizar('agente', toTitleCase(e.target.value))} required />
           </div>
         </div>
         <div>
