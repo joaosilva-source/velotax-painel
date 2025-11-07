@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bar, Line } from 'react-chartjs-2';
+import dynamic from 'next/dynamic';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,7 +11,9 @@ import {
   Legend,
 } from 'chart.js';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
+// Carregar componentes de gráfico apenas no cliente
+const Bar = dynamic(() => import('react-chartjs-2').then((m) => m.Bar), { ssr: false });
+const Line = dynamic(() => import('react-chartjs-2').then((m) => m.Line), { ssr: false });
 
 function normalizeName(s) {
   try {
@@ -85,6 +87,7 @@ function formatItem(log) {
 }
 
 export default function AdminLogs() {
+  const [chartsReady, setChartsReady] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -124,6 +127,11 @@ export default function AdminLogs() {
   };
 
   useEffect(() => {
+    // Registrar ChartJS somente no cliente para evitar divergência de hidratação
+    try {
+      ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
+    } catch {}
+    setChartsReady(true);
     const cached = localStorage.getItem('velotax_logs');
     if (cached) {
       try { setItems(JSON.parse(cached)); } catch {}
@@ -307,15 +315,21 @@ export default function AdminLogs() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="p-4 bg-white rounded border border-black/10">
           <div className="font-medium mb-2">Solicitações por tipo</div>
-          <Bar data={chartData.byType} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          {chartsReady && (
+            <Bar data={chartData.byType} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          )}
         </div>
         <div className="p-4 bg-white rounded border border-black/10">
           <div className="font-medium mb-2">Solicitações por agente</div>
-          <Bar data={chartData.byAgent} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          {chartsReady && (
+            <Bar data={chartData.byAgent} options={{ responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          )}
         </div>
         <div className="p-4 bg-white rounded border border-black/10 md:col-span-2">
           <div className="font-medium mb-2">Solicitações por hora</div>
-          <Line data={chartData.byHour} options={{ responsive: true, interaction: { intersect: false, mode: 'nearest' }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items.length ? `Hora ${items[0].label}:00` : '', label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          {chartsReady && (
+            <Line data={chartData.byHour} options={{ responsive: true, interaction: { intersect: false, mode: 'nearest' }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items.length ? `Hora ${items[0].label}:00` : '', label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
+          )}
         </div>
       </div>
       {searchCpf && (
