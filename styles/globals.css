@@ -10,11 +10,11 @@
 
 /* Dark theme tokens */
 .dark {
-  --background: #0B0D12;
+  --background: #0B0F16;
   --foreground: #E8ECF3;
-  --accent: #1e40ff; /* azul vibrante no escuro */
-  --surface: #12151C;
-  --surface-strong: #171B24;
+  --accent: #3b5cff; /* azul vibrante no escuro */
+  --surface: #151A23;        /* mais claro para contraste */
+  --surface-strong: #1B212C; /* cards destacados */
 }
 
 body {
@@ -40,11 +40,11 @@ body {
 
 .input {
   @apply w-full border rounded-lg px-3 py-2 outline-none transition-all duration-200 focus:ring-2 shadow-sm;
-  background: var(--surface);
+  background: var(--surface-strong);
   border-color: color-mix(in oklab, var(--accent) 30%, transparent);
   color: var(--foreground);
 }
-.input::placeholder { color: color-mix(in oklab, var(--foreground) 45%, transparent); }
+.input::placeholder { color: color-mix(in oklab, var(--foreground) 55%, transparent); }
 .dark .input { border-color: color-mix(in oklab, var(--accent) 35%, black); }
 .input:focus { border-color: var(--accent); box-shadow: 0 0 0 0px transparent; }
 .dark .input:focus { box-shadow: 0 0 0 0px transparent; }
@@ -59,13 +59,13 @@ body {
 .card {
   @apply border rounded-3xl shadow-lg backdrop-blur-xl transition-transform duration-300;
   background: var(--surface);
-  border-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+  border-color: rgba(255,255,255,.12);
 }
 
 .surface {
   @apply border rounded-3xl backdrop-blur-xl shadow-lg;
   background: var(--surface-strong);
-  border-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+  border-color: rgba(255,255,255,.12);
 }
 
 .section-title {
@@ -84,8 +84,8 @@ body {
 .badge {
   @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold;
   color: var(--accent);
-  border-color: color-mix(in oklab, var(--accent) 20%, transparent);
-  background: color-mix(in oklab, var(--accent) 12%, transparent);
+  border-color: color-mix(in oklab, var(--accent) 30%, transparent);
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
 }
 
 /* Input wrappers with icons */
@@ -119,3 +119,9 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg) } }
 .spinner { border: 3px solid rgba(255,255,255,.15); border-top-color: #1DFDB9; border-radius: 50%; width: 22px; height: 22px; animation: spin .8s linear infinite; }
+
+/* Dark-mode overrides for Tailwind utility colors commonly usados no app */
+.dark .text-black\/60 { color: rgba(232,236,243,.65) !important; }
+.dark .text-black\/70 { color: rgba(232,236,243,.75) !important; }
+.dark .text-black\/80 { color: rgba(232,236,243,.85) !important; }
+.dark .border-black\/10 { border-color: rgba(255,255,255,.12) !important; }
