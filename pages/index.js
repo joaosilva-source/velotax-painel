@@ -244,6 +244,10 @@ export default function Home() {
               <div className="text-lg font-semibold mb-1">Erros / Bugs</div>
               <div className="text-black/70">Reportar problemas com anexos de imagem</div>
             </a>
+            <a href="/restituicao" className="block card hover:-translate-y-0.5 p-4 text-center">
+              <div className="text-lg font-semibold mb-1">Cálculo de Restituição</div>
+              <div className="text-black/70">1º base • 2º +1% • 3º +1,79%</div>
+            </a>
           </div>
         </div>
       </div>
