@@ -29,6 +29,8 @@ export default function FormSolicitacao({ registrarLog }) {
     try {
       const cached = localStorage.getItem('velotax_local_logs');
       if (cached) setLocalLogs(JSON.parse(cached));
+      const agent = localStorage.getItem('velotax_agent');
+      if (agent) setForm((prev) => ({ ...prev, agente: agent }));
     } catch {}
   }, []);
 
@@ -97,7 +99,12 @@ export default function FormSolicitacao({ registrarLog }) {
     return () => clearInterval(id);
   }, [localLogs.length]);
 
-  const atualizar = (campo, valor) => setForm(prev => ({ ...prev, [campo]: valor }));
+  const atualizar = (campo, valor) => {
+    setForm(prev => ({ ...prev, [campo]: valor }));
+    if (campo === 'agente') {
+      try { localStorage.setItem('velotax_agent', valor); } catch {}
+    }
+  };
 
   const montarMensagem = () => {
     const simNao = v => (v ? "✅ Sim" : "❌ Não");

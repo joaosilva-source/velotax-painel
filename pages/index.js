@@ -12,7 +12,6 @@ export default function Home() {
   const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
   const [requestsRaw, setRequestsRaw] = useState([]);
-  const [agents, setAgents] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState("");
 
   const registrarLog = (msg) => {
@@ -27,9 +26,11 @@ export default function Home() {
       const list = await res.json();
       const arr = Array.isArray(list) ? list : [];
       setRequestsRaw(arr);
-      const ags = Array.from(new Set(arr.map((r) => r?.agente).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
-      setAgents(ags);
-      if (!selectedAgent && ags.length) setSelectedAgent(ags[0]);
+      // pegar agente do cache local do usuário
+      try {
+        const agent = localStorage.getItem('velotax_agent');
+        if (agent) setSelectedAgent(agent);
+      } catch {}
     } catch {
     }
     setStatsLoading(false);
@@ -94,14 +95,9 @@ export default function Home() {
                     <div className="text-2xl font-semibold">{stats.done}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <select value={selectedAgent} onChange={(e)=>setSelectedAgent(e.target.value)} className="border rounded px-2 py-2 text-sm min-w-[180px]">
-                    {agents.map((a)=>(<option key={a} value={a}>{a}</option>))}
-                  </select>
-                  <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
-                    {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
-                  </button>
-                </div>
+                <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
+                  {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
+                </button>
               </div>
               <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
                 <div className="flex items-center gap-2 mb-3">
