@@ -2,9 +2,11 @@ import '@/styles/globals.css';
 import { Toaster } from 'react-hot-toast';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
 export default function App({ Component, pageProps }) {
   const [dark, setDark] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -32,18 +34,23 @@ export default function App({ Component, pageProps }) {
         }}
       />
 
-      {/* Toggle tema discreto */}
-      <button
-        aria-label="Alternar tema"
-        onClick={() => setDark((v) => !v)}
-        className="fixed right-3 bottom-3 z-50 rounded-full border px-3 py-1 text-xs opacity-80 hover:opacity-100"
-        style={{ background: 'var(--surface)', color: 'var(--foreground)', borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)' }}
-      >
-        {dark ? 'Modo Claro' : 'Modo Escuro'}
-      </button>
+      <div>
+        {/* Toggle tema discreto */}
+        <button
+          aria-label="Alternar tema"
+          onClick={() => setDark((v) => !v)}
+          className="fixed right-3 bottom-3 z-50 rounded-full border px-3 py-1 text-xs opacity-80 hover:opacity-100"
+          style={{ background: 'var(--surface)', color: 'var(--foreground)', borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)' }}
+          title="Alternar tema"
+        >
+          {dark ? 'Modo Claro' : 'Modo Escuro'}
+        </button>
 
-      {/* A página atual (ex: index.js) */}
-      <Component {...pageProps} />
+        {/* A página atual (ex: index.js) */}
+        <div key={router.asPath} className="animate-fadeScale">
+          <Component {...pageProps} />
+        </div>
+      </div>
     </SessionProvider>
   );
 }

@@ -207,7 +207,7 @@ export default function FormSolicitacao({ registrarLog }) {
   };
 
   return (
-    <form onSubmit={enviar} className="space-y-5">
+    <form onSubmit={enviar} className="space-y-5 relative">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -352,6 +352,15 @@ export default function FormSolicitacao({ registrarLog }) {
           })}
         </div>
       </div>
+
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-card">
+            <span className="spinner" />
+            <span>Enviando solicitação…</span>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
