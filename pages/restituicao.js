@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 
 export default function Restituicao() {
+  const router = useRouter();
   const [valorStr, setValorStr] = useState('');
 
   // normaliza para número (centavos) e volta formatado
@@ -43,9 +45,15 @@ export default function Restituicao() {
       </Head>
       <div className="min-h-screen container-pad py-10">
         <div className="max-w-3xl mx-auto animate-fadeUp">
-          <div className="mb-8 surface p-8 text-center rounded-xl">
-            <h1 className="titulo-principal">Cálculo de Lotes da Restituição</h1>
-            <p className="text-black/70 mt-2">Informe o valor base e veja os lotes com acréscimos.</p>
+          <div className="mb-8 surface p-8 rounded-xl">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <button type="button" onClick={() => router.back()} className="px-3 py-1.5 rounded-lg border text-sm hover:opacity-90">
+                ← Voltar
+              </button>
+              <div />
+            </div>
+            <h1 className="titulo-principal text-center">Cálculo de Lotes da Restituição</h1>
+            <p className="text-black/70 mt-2 text-center">Informe o valor base e veja os lotes com acréscimos.</p>
           </div>
 
           <div className="card p-6 space-y-5">
