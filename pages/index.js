@@ -11,6 +11,9 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
+  const [requestsRaw, setRequestsRaw] = useState([]);
+  const [agents, setAgents] = useState([]);
+  const [selectedAgent, setSelectedAgent] = useState("");
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -23,17 +26,26 @@ export default function Home() {
       if (!res.ok) throw new Error('fail');
       const list = await res.json();
       const arr = Array.isArray(list) ? list : [];
-      const todayStr = new Date().toDateString();
-      const today = arr.filter((r) => new Date(r?.createdAt || 0).toDateString() === todayStr).length;
-      const done = arr.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
-      const pending = arr.length - done;
-      setStats({ today, pending, done });
+      setRequestsRaw(arr);
+      const ags = Array.from(new Set(arr.map((r) => r?.agente).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+      setAgents(ags);
+      if (!selectedAgent && ags.length) setSelectedAgent(ags[0]);
     } catch {
     }
     setStatsLoading(false);
   };
 
   useEffect(() => { loadStats(); }, []);
+
+  useEffect(() => {
+    const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
+    const base = selectedAgent ? arr.filter((r) => String(r?.agente||'') === selectedAgent) : arr;
+    const todayStr = new Date().toDateString();
+    const today = base.filter((r) => new Date(r?.createdAt || 0).toDateString() === todayStr).length;
+    const done = base.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
+    const pending = base.length - done;
+    setStats({ today, pending, done });
+  }, [requestsRaw, selectedAgent]);
 
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
@@ -67,8 +79,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 card hover:-translate-y-0.5 p-6">
-              {/* Stats rápidos */}
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex items-center justify-between gap-3">
                 <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
                   <div className="surface p-3 rounded-xl text-center">
                     <div className="text-xs text-black/60">Hoje</div>
@@ -83,9 +94,14 @@ export default function Home() {
                     <div className="text-2xl font-semibold">{stats.done}</div>
                   </div>
                 </div>
-                <button onClick={loadStats} disabled={statsLoading} className="ml-4 text-sm px-3 py-2 rounded border hover:opacity-90">
-                  {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <select value={selectedAgent} onChange={(e)=>setSelectedAgent(e.target.value)} className="border rounded px-2 py-2 text-sm min-w-[180px]">
+                    {agents.map((a)=>(<option key={a} value={a}>{a}</option>))}
+                  </select>
+                  <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
+                    {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
+                  </button>
+                </div>
               </div>
               <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
                 <div className="flex items-center gap-2 mb-3">
