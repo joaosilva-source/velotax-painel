@@ -46,8 +46,9 @@ body {
 }
 .input::placeholder { color: color-mix(in oklab, var(--foreground) 55%, transparent); }
 .dark .input { border-color: color-mix(in oklab, var(--accent) 35%, black); }
-.input:focus { border-color: var(--accent); box-shadow: 0 0 0 0px transparent; }
-.dark .input:focus { box-shadow: 0 0 0 0px transparent; }
+.input:hover { border-color: var(--accent); }
+.input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent); }
+.dark .input:focus { box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 45%, transparent); }
 
 .btn-primary {
   @apply bg-gradient-to-r text-white font-medium px-5 py-2 rounded-lg hover:brightness-110 active:brightness-95 transition-all duration-200 shadow-lg;

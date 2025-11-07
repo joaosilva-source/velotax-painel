@@ -25,11 +25,28 @@ function normalizeName(s) {
   } catch {
     return String(s || '').toLowerCase().trim();
   }
+
+// Unificação de tipos (ex.: "exclui de conta" -> "Exclusão de Conta")
+function canonicalizeTypeKey(raw) {
+  const norm = normalizeName(raw || 'outro') || 'outro';
+  if ((norm.includes('exclui') || norm.includes('excluir') || norm.includes('exclusao')) && norm.includes('conta')) {
+    return 'exclusao de conta';
+  }
+  return norm;
+}
+
+function canonicalizeTypeLabel(raw) {
+  const norm = normalizeName(raw || 'outro') || 'outro';
+  if ((norm.includes('exclui') || norm.includes('excluir') || norm.includes('exclusao')) && norm.includes('conta')) {
+    return 'Exclusão de Conta';
+  }
+  return raw || 'Outro';
+}
 }
 
 function isTestString(s) {
   const v = String(s || '').toLowerCase();
-  return v.includes('teste') || v.includes('test') || v.includes('debug') || v.includes('check');
+  return v.includes('teste') || v.includes('test') || v.includes('debug') || v.includes('check') || v.includes('sqse');
 }
 
 function isTestRequest(r) {
@@ -41,6 +58,8 @@ function canonicalizeAgentKey(raw) {
   const norm = normalizeName(raw || '—') || '—';
   const parts = norm.split(' ').filter(Boolean);
   if (parts[0] === 'laura') {
+    const second = parts[1] || '';
+    if (second === 'g' || second === 'guedes') return 'laura guedes';
     return parts.slice(0, 2).join(' ') || 'laura';
   }
   // Demais nomes: usar apenas primeiro token para agrupar variações (ex.: "joao", "joao s")
@@ -74,6 +93,35 @@ export default function AdminLogs() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  // Helpers: chips rápidos de período
+  const dateToInputStr = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const setQuickRange = (key) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (key === 'today') {
+      const s = dateToInputStr(today);
+      setDateFrom(s); setDateTo(s);
+      return;
+    }
+    if (key === 'week') {
+      const day = today.getDay(); // 0=Dom, 1=Seg
+      const diffToMonday = (day + 6) % 7; // transforma: Seg=0, Dom=6
+      const monday = new Date(today); monday.setDate(today.getDate() - diffToMonday);
+      setDateFrom(dateToInputStr(monday)); setDateTo(dateToInputStr(today));
+      return;
+    }
+    if (key === 'month') {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      setDateFrom(dateToInputStr(first)); setDateTo(dateToInputStr(today));
+      return;
+    }
+  };
 
   useEffect(() => {
     const cached = localStorage.getItem('velotax_logs');
@@ -143,8 +191,9 @@ export default function AdminLogs() {
     const map = {};
     for (const r of list) {
       const raw = r?.tipo || 'Outro';
-      const key = normalizeName(raw) || 'outro';
-      if (!map[key]) map[key] = { key, label: raw, count: 0 };
+      const key = canonicalizeTypeKey(raw) || 'outro';
+      const label = canonicalizeTypeLabel(raw);
+      if (!map[key]) map[key] = { key, label, count: 0 };
       map[key].count += 1;
     }
     return map;
@@ -160,7 +209,7 @@ export default function AdminLogs() {
     const toTs = dateTo ? new Date(dateTo + 'T23:59:59').getTime() : null;
     return list.filter((r) => {
       const agente = canonicalizeAgentKey(r?.agente || '—') || '—';
-      const tipo = normalizeName(r?.tipo || 'Outro') || 'outro';
+      const tipo = canonicalizeTypeKey(r?.tipo || 'Outro') || 'outro';
       const ts = r?.createdAt ? new Date(r.createdAt).getTime() : 0;
       if (selectedAgents.length && !selectedAgents.includes(agente)) return false;
       if (selectedTypes.length && !selectedTypes.includes(tipo)) return false;
@@ -176,7 +225,7 @@ export default function AdminLogs() {
     const byAgent = {};
     const byHour = Array.from({ length: 24 }, () => 0);
     for (const r of list) {
-      const tipoKey = normalizeName(r?.tipo || 'Outro') || 'outro';
+      const tipoKey = canonicalizeTypeKey(r?.tipo || 'Outro') || 'outro';
       const agentKey = canonicalizeAgentKey(r?.agente || '—') || '—';
       byType[tipoKey] = (byType[tipoKey] || 0) + 1;
       byAgent[agentKey] = (byAgent[agentKey] || 0) + 1;
@@ -216,6 +265,15 @@ export default function AdminLogs() {
             <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-full border rounded px-2 py-1" />
           </div>
           <div className="md:col-span-1"></div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <span className="text-sm text-black/60">Período rápido:</span>
+          <button type="button" onClick={() => setQuickRange('today')} className="text-xs px-2 py-1 rounded border hover:opacity-90">Hoje</button>
+          <button type="button" onClick={() => setQuickRange('week')} className="text-xs px-2 py-1 rounded border hover:opacity-90">Semana</button>
+          <button type="button" onClick={() => setQuickRange('month')} className="text-xs px-2 py-1 rounded border hover:opacity-90">Mês</button>
+          {(dateFrom || dateTo) && (
+            <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }} className="ml-2 text-xs px-2 py-1 rounded border hover:opacity-90">Limpar</button>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           <div>
