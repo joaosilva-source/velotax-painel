@@ -125,3 +125,36 @@ body {
 .dark .text-black\/70 { color: rgba(232,236,243,.75) !important; }
 .dark .text-black\/80 { color: rgba(232,236,243,.85) !important; }
 .dark .border-black\/10 { border-color: rgba(255,255,255,.12) !important; }
+
+/* Dark mode: forçar todos os cards claros para fundo escuro e texto branco */
+.dark .bg-white,
+.dark .bg-white\/90,
+.dark .bg-white\/80,
+.dark .bg-white\/70,
+.dark .bg-white\/60 {
+  background: var(--surface-strong) !important;
+  color: var(--foreground) !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+.dark .bg-white *,
+.dark .bg-white\/90 *,
+.dark .bg-white\/80 *,
+.dark .bg-white\/70 *,
+.dark .bg-white\/60 * {
+  color: var(--foreground) !important;
+}
+/* Inputs dentro desses cards seguem o tema escuro */
+.dark .bg-white .input,
+.dark .bg-white\/90 .input,
+.dark .bg-white\/80 .input,
+.dark .bg-white\/70 .input,
+.dark .bg-white\/60 .input {
+  background: var(--surface-strong) !important;
+  color: var(--foreground) !important;
+  border-color: color-mix(in oklab, var(--accent) 35%, black) !important;
+}
+.dark .bg-white .input::placeholder,
+.dark .bg-white\/90 .input::placeholder,
+.dark .bg-white\/80 .input::placeholder,
+.dark .bg-white\/70 .input::placeholder,
+.dark .bg-white\/60 .input::placeholder { color: color-mix(in oklab, var(--foreground) 55%, transparent) !important; }
