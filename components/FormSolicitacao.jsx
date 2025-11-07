@@ -337,7 +337,7 @@ export default function FormSolicitacao({ registrarLog }) {
         {(!localLogs || localLogs.length === 0) && (
           <div className="text-black/60">Nenhum log ainda.</div>
         )}
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-56 overflow-auto pr-1">
           {localLogs.map((l, idx) => {
             const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
             return (

@@ -48,7 +48,7 @@ function canonicalizeTypeLabel(raw) {
 
 function isTestString(s) {
   const v = String(s || '').toLowerCase();
-  return v.includes('teste') || v.includes('test') || v.includes('debug') || v.includes('check') || v.includes('sqse');
+  return v.includes('teste') || v.includes('test') || v.includes('debug') || v.includes('check') || v.includes('sqse') || v.includes('sqsa');
 }
 
 function isTestRequest(r) {
@@ -96,6 +96,7 @@ export default function AdminLogs() {
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [hourDay, setHourDay] = useState(''); // seletor do dia para gráfico por hora
 
   // Helpers: chips rápidos de período
   const dateToInputStr = (d) => {
@@ -229,6 +230,9 @@ export default function AdminLogs() {
 
   const chartData = useMemo(() => {
     const list = filteredRequests;
+    // filtrar por dia específico para o gráfico por hora, se selecionado
+    const dayStr = hourDay ? new Date(hourDay).toDateString() : null;
+    const listForHour = dayStr ? list.filter((r) => new Date(r?.createdAt || 0).toDateString() === dayStr) : list;
     const byType = {};
     const byAgent = {};
     const byHour = Array.from({ length: 24 }, () => 0);
@@ -237,6 +241,8 @@ export default function AdminLogs() {
       const agentKey = canonicalizeAgentKey(r?.agente || '—') || '—';
       byType[tipoKey] = (byType[tipoKey] || 0) + 1;
       byAgent[agentKey] = (byAgent[agentKey] || 0) + 1;
+    }
+    for (const r of listForHour) {
       const h = new Date(r?.createdAt).getHours?.() ?? new Date(r?.createdAt).getHours();
       if (Number.isFinite(h) && h >= 0 && h < 24) byHour[h] += 1;
     }
@@ -326,12 +332,29 @@ export default function AdminLogs() {
           )}
         </div>
         <div className="p-4 bg-white rounded border border-black/10 md:col-span-2">
-          <div className="font-medium mb-2">Solicitações por hora</div>
+          <div className="font-medium mb-2 flex items-center justify-between gap-3">
+            <span>Solicitações por hora</span>
+            <div className="flex items-center gap-2 text-sm">
+              <label className="opacity-80">Dia:</label>
+              <input type="date" value={hourDay} onChange={(e)=>setHourDay(e.target.value)} className="border rounded px-2 py-1" />
+              {hourDay && (
+                <button type="button" onClick={()=>setHourDay('')} className="text-xs px-2 py-1 rounded border">Limpar</button>
+              )}
+            </div>
+          </div>
           {chartsReady && (
             <Line data={chartData.byHour} options={{ responsive: true, interaction: { intersect: false, mode: 'nearest' }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (items) => items.length ? `Hora ${items[0].label}:00` : '', label: (ctx) => `${ctx.parsed.y} solicitações` } } } }} />
           )}
         </div>
       </div>
+
+      {loading && (
+        <div className="mb-6 space-y-2">
+          <div className="h-3 rounded bg-black/10 animate-pulse" />
+          <div className="h-3 rounded bg-black/10 animate-pulse w-2/3" />
+          <div className="h-3 rounded bg-black/10 animate-pulse w-1/3" />
+        </div>
+      )}
       {searchCpf && (
         <div className="p-4 bg-white rounded border border-black/10 mb-6">
           <div className="font-medium mb-2">Resultados para CPF: {searchCpf}</div>
