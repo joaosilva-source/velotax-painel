@@ -1,5 +1,5 @@
 // pages/index.js
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
 import Logs from "@/components/Logs";
 import Head from "next/head";
@@ -9,10 +9,31 @@ export default function Home() {
   const [searchCpf, setSearchCpf] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
+  const [statsLoading, setStatsLoading] = useState(false);
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
   };
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    try {
+      const res = await fetch('/api/requests');
+      if (!res.ok) throw new Error('fail');
+      const list = await res.json();
+      const arr = Array.isArray(list) ? list : [];
+      const todayStr = new Date().toDateString();
+      const today = arr.filter((r) => new Date(r?.createdAt || 0).toDateString() === todayStr).length;
+      const done = arr.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
+      const pending = arr.length - done;
+      setStats({ today, pending, done });
+    } catch {
+    }
+    setStatsLoading(false);
+  };
+
+  useEffect(() => { loadStats(); }, []);
 
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
@@ -46,6 +67,26 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 card hover:-translate-y-0.5 p-6">
+              {/* Stats rápidos */}
+              <div className="mb-6 flex items-center justify-between">
+                <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
+                  <div className="surface p-3 rounded-xl text-center">
+                    <div className="text-xs text-black/60">Hoje</div>
+                    <div className="text-2xl font-semibold">{stats.today}</div>
+                  </div>
+                  <div className="surface p-3 rounded-xl text-center">
+                    <div className="text-xs text-black/60">Pendentes</div>
+                    <div className="text-2xl font-semibold">{stats.pending}</div>
+                  </div>
+                  <div className="surface p-3 rounded-xl text-center">
+                    <div className="text-xs text-black/60">Feitas</div>
+                    <div className="text-2xl font-semibold">{stats.done}</div>
+                  </div>
+                </div>
+                <button onClick={loadStats} disabled={statsLoading} className="ml-4 text-sm px-3 py-2 rounded border hover:opacity-90">
+                  {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
+                </button>
+              </div>
               <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />

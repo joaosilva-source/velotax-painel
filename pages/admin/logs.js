@@ -25,6 +25,7 @@ function normalizeName(s) {
   } catch {
     return String(s || '').toLowerCase().trim();
   }
+}
 
 // Unificação de tipos (ex.: "exclui de conta" -> "Exclusão de Conta")
 function canonicalizeTypeKey(raw) {
@@ -41,7 +42,6 @@ function canonicalizeTypeLabel(raw) {
     return 'Exclusão de Conta';
   }
   return raw || 'Outro';
-}
 }
 
 function isTestString(s) {
