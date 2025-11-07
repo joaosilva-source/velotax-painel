@@ -74,6 +74,9 @@ function formatItem(log) {
   if (a === 'auto_status_done') {
     return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} marcado via reação` };
   }
+  if (a === 'auto_status_not_done') {
+    return { icon: '❌', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} marcado como não feito via reação` };
+  }
   if (a === 'status_update') {
     const st = d.status || '';
     if (st === 'feito') return { icon: '✅', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'}` };

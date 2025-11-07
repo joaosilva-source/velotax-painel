@@ -1,5 +1,5 @@
 // pages/index.js
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
 import Logs from "@/components/Logs";
 import Head from "next/head";
@@ -13,6 +13,10 @@ export default function Home() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [requestsRaw, setRequestsRaw] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState("");
+  const [agentHistory, setAgentHistory] = useState([]);
+  const [agentHistoryLoading, setAgentHistoryLoading] = useState(false);
+  const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
+  const prevRequestsRef = useRef([]);
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -36,7 +40,13 @@ export default function Home() {
     setStatsLoading(false);
   };
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(() => {
+    // pedir permissão de notificação
+    try { if (typeof window !== 'undefined' && 'Notification' in window) Notification.requestPermission().catch(()=>{}); } catch {}
+    loadStats();
+    const id = setInterval(loadStats, 15000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
@@ -46,7 +56,69 @@ export default function Home() {
     const done = base.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
     const pending = base.length - done;
     setStats({ today, pending, done });
+
+    // notificar mudanças de status 'feito' ou 'não feito'
+    try {
+      const prev = Array.isArray(prevRequestsRef.current) ? prevRequestsRef.current : [];
+      const mapPrev = new Map(prev.map((r) => [r.id, String(r.status || '')]));
+      const changed = base.filter((r) => {
+        const prevSt = mapPrev.get(r.id);
+        const curSt = String(r.status || '').toLowerCase();
+        if (!prevSt) return false;
+        return prevSt.toLowerCase() !== curSt && (curSt === 'feito' || curSt === 'não feito');
+      });
+      if (changed.length) {
+        const play = async () => {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+            g.gain.setValueAtTime(0.001, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+            o.start();
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+            o.stop(ctx.currentTime + 0.4);
+          } catch {}
+        };
+        const notify = (title, body) => {
+          try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification(title, { body });
+            }
+          } catch {}
+        };
+        changed.forEach((r) => {
+          const st = String(r.status || '').toLowerCase();
+          notify(st === 'feito' ? 'Solicitação concluída' : 'Solicitação marcada como não feita', `${r.tipo} — ${r.cpf}`);
+        });
+        play();
+      }
+      prevRequestsRef.current = base.map((r) => ({ id: r.id, status: r.status }));
+    } catch {}
   }, [requestsRaw, selectedAgent]);
+
+  // carregar histórico completo do agente (exibe no painel direito)
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedAgent) { setAgentHistory([]); return; }
+      setAgentHistoryLoading(true);
+      try {
+        const res = await fetch('/api/requests');
+        if (!res.ok) throw new Error('fail');
+        const list = await res.json();
+        const arr = Array.isArray(list) ? list : [];
+        const filtered = arr.filter((r) => String(r?.agente||'') === selectedAgent)
+          .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setAgentHistory(filtered);
+      } catch {
+        setAgentHistory([]);
+      }
+      setAgentHistoryLoading(false);
+    };
+    load();
+    setAgentHistoryLimit(50);
+  }, [selectedAgent]);
 
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
@@ -135,6 +207,35 @@ export default function Home() {
               <div className="max-h-72 overflow-auto pr-1">
                 <Logs logs={logs} />
               </div>
+            </div>
+            <div className="card hover:-translate-y-0.5 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+                <h2 className="text-lg font-semibold">Histórico do agente</h2>
+                <span className="ml-auto text-sm opacity-70">{selectedAgent || '—'}</span>
+              </div>
+              {agentHistoryLoading && <div className="text-sm opacity-70">Carregando…</div>}
+              {!agentHistoryLoading && agentHistory.length === 0 && (
+                <div className="text-sm opacity-70">Nenhum registro.</div>
+              )}
+              <div className="space-y-2 max-h-72 overflow-auto pr-1 mt-2">
+                {agentHistory.slice(0, agentHistoryLimit).map((r) => (
+                  <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                      <div className="text-xs text-black/60">Status: {r.status || '—'}</div>
+                    </div>
+                    <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+              {agentHistory.length > agentHistoryLimit && (
+                <div className="mt-3 text-right">
+                  <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90">
+                    Carregar mais ({agentHistory.length - agentHistoryLimit} restantes)
+                  </button>
+                </div>
+              )}
             </div>
             <a href="/erros-bugs" className="block card hover:-translate-y-0.5 p-4 text-center">
               <div className="text-lg font-semibold mb-1">Erros / Bugs</div>
