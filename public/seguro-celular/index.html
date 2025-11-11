@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguro Celular Velotax - Material de Atendimento</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+            color: #272A30;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 88, 0.1);
+            overflow: hidden;
+        }
+        
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #000058 0%, #1634FF 100%);
+            color: white;
+            padding: 40px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-content h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header-content p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .logo-header {
+            height: 60px;
+            object-fit: contain;
+        }
+        
+        /* MAIN CONTENT */
+        .content {
+            padding: 40px;
+        }
+        
+        /* SECTION */
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            font-size: 24px;
+            color: #000058;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #1634FF;
+            display: inline-block;
+        }
+        
+        .section-intro {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        
+        /* BULLETS */
+        .bullet-list {
+            list-style: none;
+            margin-left: 0;
+            margin-bottom: 20px;
+        }
+        
+        .bullet-list li {
+            margin-bottom: 12px;
+            padding-left: 28px;
+            position: relative;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .bullet-list li:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #1634FF;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* CARDS */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%);
+            border: 2px solid #e0e6f2;
+            border-radius: 8px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            border-color: #1634FF;
+            box-shadow: 0 8px 24px rgba(22, 52, 255, 0.15);
+        }
+        
+        .card h3 {
+            color: #1634FF;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        
+        .card p {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 12px;
+        }
+        
+        .card-value {
+            background: #000058;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        
+        /* TABLE */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        table thead {
+            background: #000058;
+            color: white;
+        }
+        
+        table th {
+            padding: 14px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #e0e6f2;
+        }
+        
+        table tbody tr:hover {
+            background: #f8f9fb;
+        }
+        
+        table tbody tr:nth-child(even) {
+            background: #fafbfc;
+        }
+        
+        /* HIGHLIGHT BOX */
+        .highlight-box {
+            background: linear-gradient(135deg, #e8f0ff 0%, #f0f4ff 100%);
+            border-left: 4px solid #1634FF;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+        }
+        
+        .highlight-box h3 {
+            color: #000058;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        
+        .highlight-box p {
+            color: #333;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        
+        /* CONTACT BOX */
+        .contact-box {
+            background: #000058;
+            color: white;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .contact-box h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        
+        .contact-item {
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+        
+        .contact-item strong {
+            color: #1634FF;
+        }
+        
+        /* TWO COLUMN */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .column h3 {
+            color: #1634FF;
+            font-size: 16px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        
+        /* FOOTER */
+        .footer {
+            background: #f5f7fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e6f2;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-content h1 {
+                font-size: 24px;
+            }
+            
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+        
+        /* PRINT */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="header-content">
+                <h1>Seguro Celular Velotax</h1>
+                <p>Material de Atendimento - Guia Prático para o Time</p>
+            </div>
+            <img src="/home/ubuntu/upload/tipo_velotax_ajustada_cor(1).png" alt="Velotax" class="logo-header">
+        </div>
+        
+        <!-- CONTENT -->
+        <div class="content">
+            
+            <!-- SEÇÃO 1: O QUE É -->
+            <div class="section">
+                <h2>O Que é o Seguro Celular Velotax?</h2>
+                <p class="section-intro">Uma proteção completa para o celular do cliente contra os principais riscos do dia a dia.</p>
+                
+                <ul class="bullet-list">
+                    <li><strong>Proteção contra roubo, furto, perda, danos acidentais e problemas técnicos</strong></li>
+                    <li>Reposição do aparelho por um modelo novo ou usado de igual ou superior valor</li>
+                    <li>Reparo ágil do aparelho em até 5 dias úteis</li>
+                    <li>Contratação 100% online, direto no app Velotax</li>
+                    <li>Benefício extra: participação em sorteio mensal de R$ 10 mil em dinheiro</li>
+                </ul>
+            </div>
+            
+            <!-- SEÇÃO 2: COMO CONTRATAR -->
+            <div class="section">
+                <h2>Como o Cliente Contrata?</h2>
+                <p class="section-intro">O processo é simples, rápido e totalmente online.</p>
+                
+                <ul class="bullet-list">
+                    <li>Acessa a aba <strong>"Seguros"</strong> no app Velotax</li>
+                    <li>Visualiza as opções de cobertura disponíveis para seu aparelho</li>
+                    <li>Escolhe qual proteção deseja contratar</li>
+                    <li>Informa o <strong>IMEI do celular</strong> (número que identifica o aparelho)</li>
+                    <li>Seleciona a forma de pagamento: <strong>Pix ou Cartão de Crédito</strong></li>
+                    <li>Confirma a contratação e recebe a apólice</li>
+                </ul>
+                
+                <div class="highlight-box">
+                    <h3>⏱️ Importante: Período de Carência</h3>
+                    <p>A proteção começa a valer <strong>após 30 dias</strong> da contratação. O cliente está protegido a partir do 31º dia.</p>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 3: OPÇÕES DE COBERTURA -->
+            <div class="section">
+                <h2>As 4 Opções de Cobertura</h2>
+                <p class="section-intro">O cliente escolhe qual nível de proteção deseja para seu celular.</p>
+                
+                <div class="cards-grid">
+                    <div class="card">
+                        <h3>🛡️ Proteção Total</h3>
+                        <p><strong>Cobre:</strong></p>
+                        <ul class="bullet-list" style="margin-left: 0; margin-bottom: 12px;">
+                            <li>Roubo, furto e perda</li>
+                            <li>Quebras e danos por líquido</li>
+                            <li>Defeitos técnicos</li>
+                        </ul>
+                        <p><strong>Valor:</strong> 30% do valor do celular/ano</p>
+                        <p><strong>Franquia:</strong> 20% (roubo/furto) ou 15% (quebras)</p>
+                        <span class="card-value">Cobertura Mais Completa</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>🚨 Roubo e Furto</h3>
+                        <p><strong>Cobre:</strong></p>
+                        <ul class="bullet-list" style="margin-left: 0; margin-bottom: 12px;">
+                            <li>Roubo qualificado</li>
+                            <li>Furto simples</li>
+                            <li>Perda</li>
+                        </ul>
+                        <p><strong>Valor:</strong> 25% do valor do celular/ano</p>
+                        <p><strong>Franquia:</strong> 20%</p>
+                        <span class="card-value">Proteção Básica</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>💥 Proteção Acidentes</h3>
+                        <p><strong>Cobre:</strong></p>
+                        <ul class="bullet-list" style="margin-left: 0; margin-bottom: 12px;">
+                            <li>Quebras de tela e câmera</li>
+                            <li>Danos por líquido</li>
+                            <li>Defeitos técnicos</li>
+                        </ul>
+                        <p><strong>Valor:</strong> 25% do valor do celular/ano</p>
+                        <p><strong>Franquia:</strong> 20%</p>
+                        <span class="card-value">Para Acidentes</span>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>📱 Proteção Tela</h3>
+                        <p><strong>Cobre:</strong></p>
+                        <ul class="bullet-list" style="margin-left: 0; margin-bottom: 12px;">
+                            <li>Quebra de tela</li>
+                            <li>Quebra de display</li>
+                        </ul>
+                        <p><strong>Valor:</strong> 15% do valor do celular/ano</p>
+                        <p><strong>Franquia:</strong> 15%</p>
+                        <span class="card-value">Proteção Econômica</span>
+                    </div>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>O que é Franquia?</h3>
+                    <p>É a parte que o cliente paga quando precisa acionar o seguro. <strong>Exemplo:</strong> se o celular custa R$ 1.000 e a franquia é 20%, o cliente paga R$ 200 e o seguro cobre o resto.</p>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 4: BENEFÍCIO EXTRA -->
+            <div class="section">
+                <h2>Benefício Extra: Sorteio Mensal</h2>
+                <p class="section-intro">Todos os clientes que contratam participam automaticamente.</p>
+                
+                <ul class="bullet-list">
+                    <li><strong>Prêmio:</strong> R$ 10 mil em dinheiro</li>
+                    <li><strong>Frequência:</strong> Sorteio mensal no último sábado de cada mês</li>
+                    <li><strong>Participação automática:</strong> Não precisa fazer nada</li>
+                    <li><strong>Limite:</strong> Se ganhar em um mês, deixa de participar dos sorteios subsequentes</li>
+                </ul>
+            </div>
+            
+            <!-- SEÇÃO 5: EM CASO DE PROBLEMA -->
+            <div class="section">
+                <h2>O Que Fazer em Caso de Problema com o Celular?</h2>
+                <p class="section-intro">O cliente deve entrar em contato com a Pitzi (seguradora parceira), não com a Velotax.</p>
+                
+                <ul class="bullet-list">
+                    <li>A Pitzi é responsável por analisar o sinistro</li>
+                    <li>A Pitzi autoriza a reposição ou reparo do aparelho</li>
+                    <li>Velotax não participa do processo de análise</li>
+                </ul>
+                
+                <div class="contact-box">
+                    <h3>📞 Contato da Pitzi (Seguradora)</h3>
+                    <div class="contact-item"><strong>Telefone:</strong> 11 2579-0068 (seg-sex, 9h às 18h)</div>
+                    <div class="contact-item"><strong>WhatsApp:</strong> 11 3777-0435 (seg-sex, 9h às 20h; sábados, 9h às 15h)</div>
+                    <div class="contact-item"><strong>Chat:</strong> disponível seg-sex, 9h às 20h</div>
+                    <div class="contact-item"><strong>Site:</strong> Pitzi.com.br</div>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 6: ISENÇÃO DE FRANQUIA -->
+            <div class="section">
+                <h2>Situações Especiais: Isenção de Franquia</h2>
+                <p class="section-intro">O cliente pode ficar isento de pagar a franquia em certas situações.</p>
+                
+                <div class="two-column">
+                    <div class="column">
+                        <h3>✓ Quando Há Isenção:</h3>
+                        <ul class="bullet-list">
+                            <li>Perda de renda (desemprego)</li>
+                            <li>Doença</li>
+                            <li>Acidente</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>📋 Como Solicitar:</h3>
+                        <ul class="bullet-list">
+                            <li>Comprovar a situação à Pitzi</li>
+                            <li>Pitzi analisa e aprova/nega</li>
+                            <li>Se aprovado, cliente não paga nada</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>💳 Parcelamento da Franquia</h3>
+                    <p>Se o cliente precisar pagar a franquia, pode parcelar em <strong>até 6 vezes</strong>.</p>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 7: RESPONSABILIDADES -->
+            <div class="section">
+                <h2>Responsabilidades do Time de Atendimento Velotax</h2>
+                <p class="section-intro">O que você deve fazer e o que não é sua responsabilidade.</p>
+                
+                <div class="two-column">
+                    <div class="column">
+                        <h3>✓ Você Faz:</h3>
+                        <ul class="bullet-list">
+                            <li>Esclarecer dúvidas sobre o produto</li>
+                            <li>Explicar como contratar</li>
+                            <li>Informar como acionar o seguro</li>
+                            <li>Fornecer contato da Pitzi</li>
+                            <li>Abrir chamados para reclamações</li>
+                        </ul>
+                    </div>
+                    <div class="column">
+                        <h3>✗ Você NÃO Faz:</h3>
+                        <ul class="bullet-list">
+                            <li>Analisar sinistros</li>
+                            <li>Autorizar reposições</li>
+                            <li>Definir valores de indenização</li>
+                            <li>Processar reparos</li>
+                            <li>Resolver problemas com a Pitzi</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 8: DICAS PRÁTICAS -->
+            <div class="section">
+                <h2>Dicas Práticas para Orientar o Cliente</h2>
+                
+                <div class="highlight-box">
+                    <h3>Cliente em Dúvida Sobre Contratar?</h3>
+                    <ul class="bullet-list">
+                        <li>Explique que é uma proteção completa contra riscos do dia a dia</li>
+                        <li>Destaque que o processo é 100% online e rápido</li>
+                        <li>Mencione o sorteio mensal como benefício extra</li>
+                        <li>Lembre sobre o período de carência de 30 dias</li>
+                    </ul>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>Cliente Teve um Problema com o Celular?</h3>
+                    <ul class="bullet-list">
+                        <li>Confirme se ele tem o seguro contratado</li>
+                        <li>Oriente a entrar em contato com a Pitzi (não com Velotax)</li>
+                        <li>Forneça todos os contatos da Pitzi</li>
+                        <li>Informe que a Pitzi irá analisar e autorizar a reposição</li>
+                    </ul>
+                </div>
+                
+                <div class="highlight-box">
+                    <h3>Cliente Quer Cancelar?</h3>
+                    <ul class="bullet-list">
+                        <li>Esclareça as condições de cancelamento (consulte a apólice)</li>
+                        <li>Abra um chamado para a área responsável se necessário</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- SEÇÃO 9: RESUMO RÁPIDO -->
+            <div class="section">
+                <h2>Resumo Rápido - Tabela de Consulta</h2>
+                
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aspecto</th>
+                                <th>Informação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>O que é</strong></td>
+                                <td>Proteção completa para celular contra roubo, furto, perda, danos</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Como contratar</strong></td>
+                                <td>100% online, no app Velotax, aba "Seguros"</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quando começa</strong></td>
+                                <td>Após 30 dias da contratação</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Coberturas</strong></td>
+                                <td>4 opções (Proteção Total, Roubo e Furto, Acidentes, Tela)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Valor</strong></td>
+                                <td>Entre 15% e 30% do valor do celular por ano</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Benefício extra</strong></td>
+                                <td>Sorteio mensal de R$ 10 mil em dinheiro</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Em caso de problema</strong></td>
+                                <td>Contatar Pitzi (11 2579-0068 ou WhatsApp 11 3777-0435)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Isenção de franquia</strong></td>
+                                <td>Possível em caso de desemprego, doença ou acidente</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Material de Atendimento - Seguro Celular Velotax | Versão 1.0 | Editável para o Time de Atendimento</p>
+        </div>
+    </div>
+</body>
+</html>

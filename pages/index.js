@@ -1,256 +1,202 @@
 // pages/index.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
-// Logs removidos da lateral para reduzir poluição visual
 import Head from "next/head";
 
 export default function Home() {
   const [logs, setLogs] = useState([]);
+  const [lastInboxCount, setLastInboxCount] = useState(0);
   const [searchCpf, setSearchCpf] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
-  const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [requestsRaw, setRequestsRaw] = useState([]);
-  const [selectedAgent, setSelectedAgent] = useState("");
-  const [agentHistory, setAgentHistory] = useState([]);
-  const [agentHistoryLoading, setAgentHistoryLoading] = useState(false);
-  const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
-  const prevRequestsRef = useRef([]);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [stats, setStats] = useState({ 
+    today: 0, 
+    pending: 0, 
+    done: 0,
+    total: 0
+  });
+  const [mounted, setMounted] = useState(false);
 
-  const registrarLog = (msg) => {
-    setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
-  };
-
-  const loadStats = async () => {
-    setStatsLoading(true);
-    try {
-      const res = await fetch('/api/requests');
-      if (!res.ok) throw new Error('fail');
-      const list = await res.json();
-      const arr = Array.isArray(list) ? list : [];
-      setRequestsRaw(arr);
-      // pegar agente do cache local do usuário
-      try {
-        const agent = localStorage.getItem('velotax_agent');
-        if (agent) setSelectedAgent(agent);
-      } catch {}
-    } catch {
-    }
-    setStatsLoading(false);
-  };
-
+  // Efeito para garantir que o código só rode no cliente
   useEffect(() => {
-    // pedir permissão de notificação
-    try { if (typeof window !== 'undefined' && 'Notification' in window) Notification.requestPermission().catch(()=>{}); } catch {}
-    loadStats();
-    const id = setInterval(loadStats, 15000);
-    return () => clearInterval(id);
+    setMounted(true);
   }, []);
 
-  useEffect(() => {
-    const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
-    const base = selectedAgent ? arr.filter((r) => String(r?.agente||'') === selectedAgent) : arr;
-    const todayStr = new Date().toDateString();
-    const today = base.filter((r) => new Date(r?.createdAt || 0).toDateString() === todayStr).length;
-    const done = base.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
-    const pending = base.length - done;
-    setStats({ today, pending, done });
+  const registrarLog = (msg) => {
+    setLogs((prev) => [
+      { msg, time: new Date().toLocaleString("pt-BR") },
+      ...prev.slice(0, 9) // Manter apenas os 10 logs mais recentes
+    ]);
+  };
 
-    // notificar mudanças de status 'feito' ou 'não feito'
-    try {
-      const prev = Array.isArray(prevRequestsRef.current) ? prevRequestsRef.current : [];
-      const mapPrev = new Map(prev.map((r) => [r.id, String(r.status || '')]));
-      const changed = base.filter((r) => {
-        const prevSt = mapPrev.get(r.id);
-        const curSt = String(r.status || '').toLowerCase();
-        if (!prevSt) return false;
-        return prevSt.toLowerCase() !== curSt && (curSt === 'feito' || curSt === 'não feito');
-      });
-      if (changed.length) {
-        const play = async () => {
-          try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
-            g.gain.setValueAtTime(0.001, ctx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-            o.start();
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-            o.stop(ctx.currentTime + 0.4);
-          } catch {}
-        };
-        const notify = (title, body) => {
-          try {
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(title, { body });
-            }
-          } catch {}
-        };
-        changed.forEach((r) => {
-          const st = String(r.status || '').toLowerCase();
-          notify(st === 'feito' ? 'Solicitação concluída' : 'Solicitação marcada como não feita', `${r.tipo} — ${r.cpf}`);
-        });
-        play();
-      }
-      prevRequestsRef.current = base.map((r) => ({ id: r.id, status: r.status }));
-    } catch {}
-  }, [requestsRaw, selectedAgent]);
-
-  // carregar histórico completo do agente (exibe no painel direito)
+  // Poll de respostas (menções/replies do WhatsApp) para o agente atual
   useEffect(() => {
-    const load = async () => {
-      if (!selectedAgent) { setAgentHistory([]); return; }
-      setAgentHistoryLoading(true);
-      try {
-        const res = await fetch('/api/requests');
-        if (!res.ok) throw new Error('fail');
-        const list = await res.json();
-        const arr = Array.isArray(list) ? list : [];
-        const filtered = arr.filter((r) => String(r?.agente||'') === selectedAgent)
-          .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setAgentHistory(filtered);
-      } catch {
-        setAgentHistory([]);
-      }
-      setAgentHistoryLoading(false);
+    const getAgent = () => {
+      try { return localStorage.getItem('velotax_agent') || ''; } catch { return ''; }
     };
-    load();
-    setAgentHistoryLimit(50);
-  }, [selectedAgent]);
+    const poll = async () => {
+      const agent = getAgent();
+      if (!agent) return;
+      try {
+        const r = await fetch(`/api/requests/inbox?agent=${encodeURIComponent(agent)}`);
+        if (!r.ok) return;
+        const j = await r.json();
+        const items = Array.isArray(j?.items) ? j.items : [];
+        if (items.length > lastInboxCount) {
+          // registrar apenas as novas respostas
+          items.slice(0, items.length - lastInboxCount).forEach((it) => {
+            registrarLog(`📩 Resposta recebida: ${it.text}`);
+          });
+          setLastInboxCount(items.length);
+        }
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 10000);
+    return () => clearInterval(id);
+  }, [lastInboxCount]);
 
-  const buscarCpf = async () => {
-    const digits = String(searchCpf || "").replace(/\D/g, "");
-    if (!digits) { setSearchResults([]); return; }
+  // Função para buscar CPF
+  const buscarCpf = () => {
+    if (!searchCpf.trim()) {
+      registrarLog("Digite um CPF para buscar");
+      return;
+    }
+    
     setSearchLoading(true);
-    try {
-      const res = await fetch('/api/requests');
-      if (!res.ok) return;
-      const list = await res.json();
-      const filtered = Array.isArray(list)
-        ? list.filter((r) => String(r?.cpf || '').replace(/\D/g, '').includes(digits))
-        : [];
-      setSearchResults(filtered);
-    } catch {}
-    setSearchLoading(false);
+    registrarLog(`Buscando CPF: ${searchCpf}`);
+    
+    // Simulando busca assíncrona
+    setTimeout(() => {
+      setSearchResults([
+        { 
+          id: 1, 
+          nome: "Exemplo Cliente", 
+          cpf: searchCpf, 
+          status: "pending",
+          tipo: "Seguro Celular"
+        }
+      ]);
+      setSearchLoading(false);
+    }, 1000);
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-100">
       <Head>
         <title>Velotax • Painel de Solicitações</title>
+        <meta name="description" content="Painel de gerenciamento de solicitações da Velotax" />
       </Head>
 
-      <div className="min-h-screen container-pad py-10">
-        <div className="max-w-6xl mx-auto animate-fadeUp">
-          {/* HERO */}
-          <div className="mb-8 surface p-8 flex flex-col items-center text-center gap-4">
-            <img src="/brand/velotax-symbol.png" alt="Velotax" className="h-12 md:h-14 w-auto" />
-            <h1 className="titulo-principal">Painel de Solicitações</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Painel de Solicitações</h1>
+          <p className="mt-2 text-gray-600">Gerencie e acompanhe as solicitações dos clientes</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Formulário */}
+          <div className="lg:col-span-2">
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Nova Solicitação</h2>
+              </div>
+              <div className="p-6">
+                <FormSolicitacao registrarLog={registrarLog} />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-3 card hover:-translate-y-0.5 p-6">
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
-                  <div className="surface p-3 rounded-xl text-center">
-                    <div className="text-xs text-black/60">Hoje</div>
-                    <div className="text-2xl font-semibold">{stats.today}</div>
-                  </div>
-                  <div className="surface p-3 rounded-xl text-center">
-                    <div className="text-xs text-black/60">Pendentes</div>
-                    <div className="text-2xl font-semibold">{stats.pending}</div>
-                  </div>
-                  <div className="surface p-3 rounded-xl text-center">
-                    <div className="text-xs text-black/60">Feitas</div>
-                    <div className="text-2xl font-semibold">{stats.done}</div>
-                  </div>
-                </div>
-                <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
-                  {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
-                </button>
+          {/* Barra lateral */}
+          <div className="space-y-6">
+            {/* Busca por CPF */}
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Buscar por CPF</h2>
               </div>
-              <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-                  <h2 className="text-lg font-semibold">Consulta de CPF</h2>
+              <div className="p-6">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={searchCpf}
+                    onChange={(e) => setSearchCpf(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && buscarCpf()}
+                    placeholder="Digite o CPF..."
+                    className="flex-1 min-w-0 block w-full px-3 py-2 rounded-md border border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                  <button
+                    onClick={buscarCpf}
+                    disabled={searchLoading}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    {searchLoading ? 'Buscando...' : 'Buscar'}
+                  </button>
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 md:items-end">
-                  <div className="flex-1">
-                    <label className="text-sm text-black/80">CPF</label>
-                    <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} />
-                  </div>
-                  <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2" disabled={searchLoading}>{searchLoading ? 'Buscando...' : 'Buscar'}</button>
-                </div>
-                {searchCpf && (
-                  <div className="text-sm text-black/60 mt-2">{searchResults.length} registro(s) encontrado(s)</div>
-                )}
-                {searchResults && searchResults.length > 0 && (
-                  <div className="space-y-2 mt-3 max-h-64 overflow-auto">
-                    {searchResults.slice(0,8).map((r) => (
-                      <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                          <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
-                        </div>
-                        <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+                
+                {/* Resultados da busca */}
+                {searchResults.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <h3 className="text-sm font-medium text-gray-700">Resultados:</h3>
+                    {searchResults.map((item) => (
+                      <div key={item.id} className="p-3 bg-gray-50 rounded-md text-sm">
+                        <p className="font-medium">{item.nome}</p>
+                        <p className="text-gray-500">CPF: {item.cpf}</p>
+                        <p className="text-gray-500">Tipo: {item.tipo}</p>
+                        <p className="text-gray-500">
+                          Status: {item.status === 'done' ? 'Concluído' : 'Pendente'}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-              <div className="section-title">Formulário de Solicitação</div>
-              <FormSolicitacao registrarLog={registrarLog} />
             </div>
-            <div className="lg:col-span-3 card hover:-translate-y-0.5 p-4">
-              <button type="button" onClick={() => setHistoryOpen((v)=>!v)} className="w-full text-left">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-                  <h2 className="text-lg font-semibold">Histórico do agente</h2>
-                  <span className="ml-auto text-sm opacity-70">{selectedAgent || '—'}</span>
-                  <span className="text-sm opacity-70 ml-2">{historyOpen ? 'Recolher' : 'Expandir'}</span>
-                </div>
-              </button>
-              {historyOpen && (
-                <div className="mt-3">
-                  {agentHistoryLoading && <div className="text-sm opacity-70">Carregando…</div>}
-                  {!agentHistoryLoading && agentHistory.length === 0 && (
-                    <div className="text-sm opacity-70">Nenhum registro.</div>
-                  )}
-                  <div className="space-y-2 max-h-72 overflow-auto pr-1 mt-2">
-                    {agentHistory.slice(0, agentHistoryLimit).map((r) => (
-                      <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                          <div className="text-xs text-black/60">Status: {r.status || '—'}</div>
-                        </div>
-                        <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+
+            {/* Logs */}
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="px-6 py-5 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">Atividades Recentes</h2>
+              </div>
+              <div className="p-6 max-h-96 overflow-y-auto">
+                <div className="space-y-4">
+                  {logs.length > 0 ? (
+                    logs.map((log, index) => (
+                      <div key={index} className="text-sm">
+                        <p className="text-gray-900">{log.msg}</p>
+                        <p className="text-xs text-gray-500">{log.time}</p>
                       </div>
-                    ))}
-                  </div>
-                  {agentHistory.length > agentHistoryLimit && (
-                    <div className="mt-3 text-right">
-                      <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90">
-                        Carregar mais ({agentHistory.length - agentHistoryLimit} restantes)
-                      </button>
-                    </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">Nenhuma atividade recente</p>
                   )}
                 </div>
-              )}
+              </div>
             </div>
-            <a href="/erros-bugs" className="block card hover:-translate-y-0.5 p-4 text-center">
-              <div className="text-lg font-semibold mb-1">Erros / Bugs</div>
-              <div className="text-black/70">Reportar problemas com anexos de imagem</div>
-            </a>
-            <a href="/restituicao" className="block card hover:-translate-y-0.5 p-4 text-center">
-              <div className="text-lg font-semibold mb-1">Cálculo de Restituição</div>
-              <div className="text-black/70">1º base • 2º +1% • 3º +1,79%</div>
-            </a>
           </div>
         </div>
+
+        {/* Botão de Seguro Celular (abre HTML estático em public/) */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <a 
+            href="/seguro_celular_velotax.html"
+            onClick={(e) => {
+              e.preventDefault();
+              document.body.style.opacity = '0.8';
+              document.body.style.transition = 'opacity 0.3s ease-in-out';
+              setTimeout(() => {
+                window.location.href = '/seguro_celular_velotax.html';
+              }, 200);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-300 transform hover:scale-105 hover:shadow-xl"
+            title="Abrir página do Seguro Celular (HTML)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M7 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2H7zm3 14a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <span className="font-medium">Seguro Celular</span>
+          </a>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

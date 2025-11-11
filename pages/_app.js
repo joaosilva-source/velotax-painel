@@ -1,4 +1,5 @@
 import '@/styles/globals.css';
+import '@/styles/seguro-celular.css';
 import { Toaster } from 'react-hot-toast';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState } from 'react';

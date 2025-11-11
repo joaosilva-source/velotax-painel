@@ -1,6 +1,16 @@
 // components/FormSolicitacao.jsx
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { toTitleCase } from "@/lib/utils/string";
+import { notifyError } from "@/lib/config/notifications";
+import { 
+  getAgent, 
+  setAgent, 
+  getLocalLogs, 
+  setLocalLogs,
+  addMyRequestId,
+  addMyWaId
+} from "@/lib/services/storage";
 
 export default function FormSolicitacao({ registrarLog }) {
   const [form, setForm] = useState({
@@ -36,18 +46,21 @@ export default function FormSolicitacao({ registrarLog }) {
 
   // carregar cache inicial
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem('velotax_local_logs');
-      if (cached) setLocalLogs(JSON.parse(cached));
-      const agent = localStorage.getItem('velotax_agent');
-      if (agent) setForm((prev) => ({ ...prev, agente: toTitleCase(agent) }));
-    } catch {}
+    const cachedLogs = getLocalLogs();
+    if (cachedLogs.length > 0) {
+      setLocalLogs(cachedLogs);
+    }
+    
+    const agent = getAgent();
+    if (agent) {
+      setForm(prev => ({ ...prev, agente: toTitleCase(agent) }));
+    }
   }, []);
 
   // util: salvar cache
   const saveCache = (items) => {
     setLocalLogs(items);
-    try { localStorage.setItem('velotax_local_logs', JSON.stringify(items)); } catch {}
+    setLocalLogs(items); // Usando a função do serviço de armazenamento
   };
 
   const buscarCpf = async () => {
@@ -160,29 +173,27 @@ export default function FormSolicitacao({ registrarLog }) {
     // garantir nome do agente normalizado e em cache
     let agenteNorm = form.agente && form.agente.trim() ? toTitleCase(form.agente) : '';
     if (!agenteNorm) {
-      try { agenteNorm = toTitleCase(localStorage.getItem('velotax_agent') || ''); } catch {}
-      if (agenteNorm) setForm((prev) => ({ ...prev, agente: agenteNorm }));
+      agenteNorm = toTitleCase(getAgent() || '');
+      if (agenteNorm) setForm(prev => ({ ...prev, agente: agenteNorm }));
     }
     if (agenteNorm) {
-      try { localStorage.setItem('velotax_agent', agenteNorm); } catch {}
+      setAgent(agenteNorm); // Usando a função do serviço de armazenamento
     }
 
     const mensagemTexto = montarMensagem();
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    // usar proxy interno para garantir captura de messageId
+    const apiUrl = '/api/send';
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
-    const payload = { jid: defaultJid, mensagem: mensagemTexto };
+    const payload = { jid: defaultJid, mensagem: mensagemTexto, agente: agenteNorm || form.agente, cpf: form.cpf };
 
     try {
       // 1) Tentar enviar via WhatsApp se configurado
-      let res = { ok: false };
-      if (apiUrl && defaultJid) {
-        res = await fetch(apiUrl + "/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-      }
+      let res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
 
       // 2) Extrair waMessageId quando houver resposta OK
       let waMessageId = null;
@@ -194,18 +205,35 @@ export default function FormSolicitacao({ registrarLog }) {
       }
 
       // 3) Persistir SEMPRE a solicitação e o log
-      await fetch('/api/requests', {
+      const clientToken = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      const requestData = {
+        agente: agenteNorm || form.agente,
+        cpf: form.cpf,
+        tipo: form.tipo,
+        payload: { ...form, clientToken },
+        clientToken,
+        agentContact: defaultJid || null,
+        waMessageId,
+      };
+      
+      const reqRes = await fetch('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          agente: agenteNorm || form.agente,
-          cpf: form.cpf,
-          tipo: form.tipo,
-          payload: { ...form },
-          agentContact: defaultJid || null,
-          waMessageId,
-        })
+        body: JSON.stringify(requestData)
       });
+      
+      // Salvar o ID da solicitação para notificações futuras
+      try {
+        if (reqRes.ok) {
+          const created = await reqRes.json();
+          if (created?.id) {
+            addMyRequestId(created.id);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao processar resposta da API:', error);
+      }
 
       await fetch('/api/logs', {
         method: 'POST',
@@ -214,12 +242,14 @@ export default function FormSolicitacao({ registrarLog }) {
       });
 
       // 4) Atualizar UI/Cache
-      if (!apiUrl || !defaultJid) {
-        registrarLog("ℹ️ WhatsApp não configurado: apenas registrado no painel");
-        toast.success("Solicitação registrada");
-      } else if (res.ok) {
+      if (res.ok) {
         registrarLog("✅ Enviado com sucesso");
         toast.success("Solicitação enviada");
+        
+        // Salvar o ID da mensagem do WhatsApp para notificações futuras
+        if (waMessageId) {
+          addMyWaId(waMessageId);
+        }
       } else {
         const txt = await res.text();
         registrarLog("❌ Erro da API: " + txt);
