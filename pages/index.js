@@ -252,6 +252,14 @@ export default function Home() {
               <div className="text-lg font-semibold mb-1">Seguro Celular</div>
               <div className="text-black/70">Material de atendimento com guia completo</div>
             </a>
+            <a href="/credito_trabalhador_velotax.html" className="block card hover:-translate-y-0.5 p-4 text-center">
+              <div className="text-lg font-semibold mb-1">Crédito do Trabalhador</div>
+              <div className="text-black/70">Guia de atendimento e pontos de atenção</div>
+            </a>
+            <a href="/credito_pessoal_velotax.html" className="block card hover:-translate-y-0.5 p-4 text-center">
+              <div className="text-lg font-semibold mb-1">Crédito Pessoal</div>
+              <div className="text-black/70">Guia de atendimento e perguntas frequentes</div>
+            </a>
           </div>
         </div>
       </div>
