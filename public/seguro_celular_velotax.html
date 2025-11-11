@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Velotax • Seguro Celular</title>
+  <link rel="icon" href="/favicon.ico" />
+  <style>
+    :root {
+      --bg: #0b0b0c;
+      --fg: #ffffff;
+      --muted: rgba(255,255,255,0.7);
+      --surface: #101113;
+      --border: rgba(255,255,255,0.12);
+      --brand: #22d3ee;
+    }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Noto Sans, "Apple Color Emoji", "Segoe UI Emoji"; }
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: linear-gradient(180deg, rgba(11,11,12,0.9), rgba(11,11,12,0.6) 60%, rgba(11,11,12,0)); backdrop-filter: blur(6px); z-index: 30; }
+    .logo-header { height: 24px; opacity: 0.9; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; line-height: 1; background: #0e0f11; cursor: pointer; }
+    .btn:hover { opacity: 0.9; }
+    .layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .side-menu { position: static; } }
+    .side-menu { position: sticky; top: 84px; align-self: start; border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--surface); }
+    .side-menu h3 { margin: 0 0 8px; font-size: 14px; opacity: 0.9; }
+    .side-link { display: block; font-size: 14px; padding: 8px 10px; border-radius: 10px; color: var(--muted); }
+    .side-link:hover { background: rgba(255,255,255,0.05); color: var(--fg); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .section { scroll-margin-top: 90px; }
+    .title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
+    .muted { color: var(--muted); }
+    .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: rgba(34,211,238,0.15); color: #67e8f9; font-size: 12px; border: 1px solid rgba(103,232,249,0.25); }
+    .list li { margin: 6px 0; }
+    .spacer { height: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <a class="btn" href="/">← Voltar à Home</a>
+      <img src="/brand/velotax-wordmark.png" alt="Velotax" class="logo-header" />
+    </header>
+
+    <div class="spacer"></div>
+
+    <div class="layout">
+      <nav class="side-menu">
+        <h3>Conteúdo</h3>
+        <a class="side-link" href="#intro">Visão Geral</a>
+        <a class="side-link" href="#contratacao">Como contratar</a>
+        <a class="side-link" href="#coberturas">Coberturas</a>
+        <a class="side-link" href="#exclusoes">Exclusões</a>
+        <a class="side-link" href="#duvidas">Dúvidas frequentes</a>
+        <a class="side-link" href="#scripts">Scripts de atendimento</a>
+      </nav>
+
+      <main>
+        <section id="intro" class="section card">
+          <div class="pill">Seguro Celular</div>
+          <h1 class="title">Visão Geral</h1>
+          <p class="muted">Material de atendimento com guia completo para oferta do seguro celular aos clientes Velotax.</p>
+        </section>
+
+        <div class="spacer"></div>
+
+        <section id="contratacao" class="section card">
+          <h2 class="title">Como contratar</h2>
+          <ol class="list">
+            <li>Confirme o modelo do aparelho e o CPF do titular.</li>
+            <li>Explique as coberturas e valores disponíveis.</li>
+            <li>Envie o link de pagamento e aguarde a confirmação.</li>
+            <li>Registre o número de protocolo no sistema Velotax.</li>
+          </ol>
+        </section>
+
+        <div class="spacer"></div>
+
+        <section id="coberturas" class="section card">
+          <h2 class="title">Coberturas</h2>
+          <ul class="list">
+            <li>Roubo e furto qualificado.</li>
+            <li>Danos acidentais.</li>
+            <li>Assistência técnica autorizada.</li>
+          </ul>
+        </section>
+
+        <div class="spacer"></div>
+
+        <section id="exclusoes" class="section card">
+          <h2 class="title">Exclusões</h2>
+          <ul class="list">
+            <li>Perda simples sem boletim de ocorrência.</li>
+            <li>Vícios ocultos de fábrica fora da garantia.</li>
+            <li>Intervenções não autorizadas.</li>
+          </ul>
+        </section>
+
+        <div class="spacer"></div>
+
+        <section id="duvidas" class="section card">
+          <h2 class="title">Dúvidas frequentes</h2>
+          <ul class="list">
+            <li><b>Quando começa a cobertura?</b> Após confirmação do pagamento e validação dos dados.</li>
+            <li><b>Há franquia?</b> Sim, conforme a categoria do aparelho.</li>
+            <li><b>Como acionar?</b> Oriente o cliente a abrir chamado com nota e boletim.</li>
+          </ul>
+        </section>
+
+        <div class="spacer"></div>
+
+        <section id="scripts" class="section card">
+          <h2 class="title">Scripts de atendimento</h2>
+          <p class="muted">Use estes exemplos durante a conversa:</p>
+          <ul class="list">
+            <li>"Pelo seu modelo, fica a partir de R$ XX/mês com cobertura para roubo e danos."</li>
+            <li>"A contratação é rápida: confirmo seus dados e envio o link de pagamento."</li>
+            <li>"Em caso de sinistro, a assistência é feita por autorizadas, garantindo a qualidade."</li>
+          </ul>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // Rolagem suave para âncoras
+    document.querySelectorAll('a.side-link').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const href = a.getAttribute('href') || '';
+        if (href.startsWith('#')) {
+          e.preventDefault();
+          const el = document.querySelector(href);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
