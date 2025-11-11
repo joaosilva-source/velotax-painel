@@ -248,6 +248,10 @@ export default function Home() {
               <div className="text-lg font-semibold mb-1">Cálculo de Restituição</div>
               <div className="text-black/70">1º base • 2º +1% • 3º +1,79%</div>
             </a>
+            <a href="/seguro_celular_velotax.html" className="block card hover:-translate-y-0.5 p-4 text-center">
+              <div className="text-lg font-semibold mb-1">Seguro Celular</div>
+              <div className="text-black/70">Material de atendimento com guia completo</div>
+            </a>
           </div>
         </div>
       </div>
