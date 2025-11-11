@@ -17,6 +17,7 @@ export default function Home() {
   const [agentHistoryLoading, setAgentHistoryLoading] = useState(false);
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
+  const prevRepliesRef = useRef(new Map());
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const registrarLog = (msg) => {
@@ -96,6 +97,34 @@ export default function Home() {
         play();
       }
       prevRequestsRef.current = base.map((r) => ({ id: r.id, status: r.status }));
+    } catch {}
+
+    // detectar novas respostas (replies) associadas às solicitações
+    try {
+      const prevMap = prevRepliesRef.current instanceof Map ? prevRepliesRef.current : new Map();
+      const nextMap = new Map();
+      let localAgent = '';
+      try { localAgent = localStorage.getItem('velotax_agent') || ''; } catch {}
+
+      base.forEach((req) => {
+        const replies = Array.isArray(req?.payload?.replies) ? req.payload.replies : [];
+        const prevCount = prevMap.get(req.id) || 0;
+        if (replies.length > prevCount) {
+          const newReplies = replies.slice(prevCount);
+          // garantir que avisamos apenas o agente correspondente (quando conhecido)
+          const shouldNotify = selectedAgent
+            ? true
+            : (!!localAgent && String(req?.agente || '') === localAgent);
+          if (shouldNotify) {
+            newReplies.forEach((reply) => {
+              const who = reply?.reactor ? ` (${reply.reactor})` : '';
+              registrarLog(`📩 Resposta recebida${who}: ${reply?.text || ''}`);
+            });
+          }
+        }
+        nextMap.set(req.id, replies.length);
+      });
+      prevRepliesRef.current = nextMap;
     } catch {}
   }, [requestsRaw, selectedAgent]);
 
@@ -247,6 +276,10 @@ export default function Home() {
             <a href="/restituicao" className="block card hover:-translate-y-0.5 p-4 text-center">
               <div className="text-lg font-semibold mb-1">Cálculo de Restituição</div>
               <div className="text-black/70">1º base • 2º +1% • 3º +1,79%</div>
+            </a>
+            <a href="/seguro_celular_velotax.html" className="block card hover:-translate-y-0.5 p-4 text-center">
+              <div className="text-lg font-semibold mb-1">Seguro Celular</div>
+              <div className="text-black/70">Material de atendimento com guia completo</div>
             </a>
           </div>
         </div>

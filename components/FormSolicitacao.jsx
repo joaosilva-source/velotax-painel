@@ -80,7 +80,24 @@ export default function FormSolicitacao({ registrarLog }) {
         const match = item.waMessageId
           ? all.find(r => r.waMessageId === item.waMessageId)
           : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-        return match ? { ...item, status: match.status } : item;
+        if (!match) return item;
+        const replies = Array.isArray(match?.payload?.replies) ? match.payload.replies : [];
+        const prevCount = item.replyCount || 0;
+        const lastReplyObj = replies.length ? replies[replies.length - 1] : null;
+        if (replies.length > prevCount && lastReplyObj) {
+          const who = lastReplyObj?.reactor ? ` (${lastReplyObj.reactor})` : '';
+          registrarLog(`📩 Resposta recebida${who}: ${lastReplyObj?.text || ''}`);
+        }
+        return {
+          ...item,
+          status: match.status,
+          replyCount: replies.length,
+          lastReply: lastReplyObj ? {
+            text: lastReplyObj.text,
+            reactor: lastReplyObj.reactor || null,
+            at: lastReplyObj.at || new Date().toISOString(),
+          } : null,
+        };
       });
       saveCache(updated);
     } catch {}
@@ -99,7 +116,24 @@ export default function FormSolicitacao({ registrarLog }) {
           const match = item.waMessageId
             ? all.find(r => r.waMessageId === item.waMessageId)
             : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-          return match ? { ...item, status: match.status } : item;
+          if (!match) return item;
+          const replies = Array.isArray(match?.payload?.replies) ? match.payload.replies : [];
+          const prevCount = item.replyCount || 0;
+          const lastReplyObj = replies.length ? replies[replies.length - 1] : null;
+          if (replies.length > prevCount && lastReplyObj) {
+            const who = lastReplyObj?.reactor ? ` (${lastReplyObj.reactor})` : '';
+            registrarLog(`📩 Resposta recebida${who}: ${lastReplyObj?.text || ''}`);
+          }
+          return {
+            ...item,
+            status: match.status,
+            replyCount: replies.length,
+            lastReply: lastReplyObj ? {
+              text: lastReplyObj.text,
+              reactor: lastReplyObj.reactor || null,
+              at: lastReplyObj.at || new Date().toISOString(),
+            } : item.lastReply || null,
+          };
         });
         saveCache(updated);
       } catch {}
@@ -233,6 +267,8 @@ export default function FormSolicitacao({ registrarLog }) {
         waMessageId,
         status: 'em aberto',
         createdAt: new Date().toISOString(),
+        replyCount: 0,
+        lastReply: null,
       };
       saveCache([newItem, ...localLogs].slice(0, 50));
     } catch (err) {
@@ -379,12 +415,24 @@ export default function FormSolicitacao({ registrarLog }) {
           {localLogs.map((l, idx) => {
             const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
             return (
-              <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{icon}</span>
-                  <span className="text-sm">{l.cpf} — {l.tipo}</span>
+              <div key={idx} className="p-3 bg-white rounded border border-black/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{icon}</span>
+                    <span className="text-sm">{l.cpf} — {l.tipo}</span>
+                  </div>
+                  <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
                 </div>
-                <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                {l.lastReply && (
+                  <div className="mt-2 text-xs text-black/70 border-t border-black/10 pt-2">
+                    <div className="font-medium text-black/80 flex items-center gap-1">
+                      <span>📩 Resposta</span>
+                      {l.lastReply.reactor && <span className="opacity-70">({l.lastReply.reactor})</span>}
+                    </div>
+                    <div>{l.lastReply.text}</div>
+                    <div className="opacity-60 mt-1">{new Date(l.lastReply.at).toLocaleString()}</div>
+                  </div>
+                )}
               </div>
             );
           })}
