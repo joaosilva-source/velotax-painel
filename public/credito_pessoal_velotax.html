@@ -503,10 +503,9 @@
   /* responsive/hoverable sidebar */
   @media (max-width: 1024px) {
     .vt-back { left: auto; right: 16px; }
-    .vt-nav { left: 0; transform: translateX(-85%); width: 240px; transition: transform .2s ease; border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
-    .vt-nav:hover, .vt-nav:focus-within { transform: translateX(0); }
-    .vt-handle { position: fixed; left: 0; top: 50%; transform: translateY(-50%); width: 14px; height: 48px; background: #ffffff; border: 1px solid rgba(0,0,0,0.12); border-left: none; border-top-right-radius: 10px; border-bottom-right-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 9999; cursor: pointer; }
-    .vt-handle:hover + .vt-nav { transform: translateX(0); }
+    .vt-nav { left: 0; transform: translateX(-100%); width: 85vw; max-width: 320px; transition: transform .2s ease; border-top-right-radius: 12px; border-bottom-right-radius: 12px; opacity: 0; pointer-events: none; }
+    .vt-nav.vt-open { transform: translateX(0); opacity: 1; pointer-events: auto; }
+    .vt-handle { display: none; }
   }
   @media (max-width: 768px) {
     .vt-nav { left: 0; transform: translateX(-100%); width: 85vw; max-width: 320px; transition: transform .2s ease; }
