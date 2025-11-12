@@ -6,26 +6,24 @@ export default function Restituicao() {
   const router = useRouter();
   const [valorStr, setValorStr] = useState('');
 
-  // normaliza para número (centavos) e volta formatado
-  const parseValor = (s) => {
+  const parseCents = (s) => {
     const digits = String(s || '').replace(/[^0-9]/g, '');
-    const v = Number(digits || 0) / 100;
-    return v;
+    return Number(digits || 0);
   };
-  const formatBRL = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatBRLFromCents = (c) => (c/100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const valor = useMemo(() => parseValor(valorStr), [valorStr]);
-  const lotes = useMemo(() => {
-    const base = isFinite(valor) ? valor : 0;
-    const l1 = base;
-    const l2 = base * 1.01; // +1%
-    const l3 = base * 1.0179; // +1,79%
+  const baseCents = useMemo(() => parseCents(valorStr), [valorStr]);
+  const lotesCents = useMemo(() => {
+    const base = Number.isFinite(baseCents) ? baseCents : 0;
+    const l1 = base; // base
+    const l2 = Math.round(base * 101 / 100); // +1%
+    const l3 = Math.round(base * 10179 / 10000); // +1,79%
     return [l1, l2, l3];
-  }, [valor]);
+  }, [baseCents]);
 
   // formata no blur
   const onBlur = () => {
-    try { setValorStr(formatBRL(valor)); } catch {}
+    try { setValorStr(formatBRLFromCents(baseCents)); } catch {}
   };
 
   useEffect(() => {
@@ -72,15 +70,15 @@ export default function Restituicao() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-white rounded border border-black/10">
                 <div className="text-xs text-black/60 mb-1">1º Lote (base)</div>
-                <div className="text-xl font-semibold">{formatBRL(lotes[0] || 0)}</div>
+                <div className="text-xl font-semibold">{formatBRLFromCents(lotesCents[0] || 0)}</div>
               </div>
               <div className="p-4 bg-white rounded border border-black/10">
                 <div className="text-xs text-black/60 mb-1">2º Lote (+1%)</div>
-                <div className="text-xl font-semibold">{formatBRL(lotes[1] || 0)}</div>
+                <div className="text-xl font-semibold">{formatBRLFromCents(lotesCents[1] || 0)}</div>
               </div>
               <div className="p-4 bg-white rounded border border-black/10">
                 <div className="text-xs text-black/60 mb-1">3º Lote (+1,79%)</div>
-                <div className="text-xl font-semibold">{formatBRL(lotes[2] || 0)}</div>
+                <div className="text-xl font-semibold">{formatBRLFromCents(lotesCents[2] || 0)}</div>
               </div>
             </div>
           </div>
