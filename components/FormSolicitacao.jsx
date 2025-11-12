@@ -171,7 +171,7 @@ export default function FormSolicitacao({ registrarLog }) {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
-    const payload = { jid: defaultJid, mensagem: mensagemTexto };
+    const payload = { jid: defaultJid, mensagem: mensagemTexto, cpf: form.cpf, solicitacao: form.tipo };
 
     try {
       // 1) Tentar enviar via WhatsApp se configurado
