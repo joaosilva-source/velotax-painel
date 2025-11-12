@@ -18,7 +18,7 @@ export default function Home() {
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState('');
+  const [backendUrl, setBackendUrl] = useState('https://whatsapp-api-y40p.onrender.com');
   const [replies, setReplies] = useState([]);
 
   const registrarLog = (msg) => {
@@ -53,10 +53,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const fromEnv = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-      const fromStore = typeof window !== 'undefined' ? (localStorage.getItem('velotax_backend') || '') : '';
-      const url = String(fromEnv || fromStore || '').trim();
-      if (url) setBackendUrl(url.replace(/\/$/, ''));
+      setBackendUrl((v) => (v ? v.replace(/\/$/, '') : 'https://whatsapp-api-y40p.onrender.com'));
     } catch {}
   }, []);
 
@@ -300,24 +297,11 @@ export default function Home() {
           <div className="flex items-center gap-2 mb-2">
             <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
             <div className="text-sm font-semibold">Respostas (tempo real)</div>
-            <button type="button" onClick={() => {
-              try {
-                const v = prompt('Backend URL (ex.: https://seu-servico.onrender.com)', backendUrl || '');
-                if (v !== null) {
-                  const val = String(v).trim().replace(/\/$/, '');
-                  setBackendUrl(val);
-                  if (typeof window !== 'undefined') localStorage.setItem('velotax_backend', val);
-                }
-              } catch {}
-            }} className="ml-auto text-xs px-2 py-1 rounded border">{backendUrl ? 'Configurar' : 'Definir URL'}</button>
           </div>
-          {!backendUrl && (
-            <div className="text-xs text-black/60">Defina o Backend URL para ativar o stream.</div>
-          )}
-          {backendUrl && replies.length === 0 && (
+          {replies.length === 0 && (
             <div className="text-xs text-black/60">Aguardando respostas…</div>
           )}
-          {backendUrl && replies.length > 0 && (
+          {replies.length > 0 && (
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
               {replies.map((r, idx) => (
                 <div key={(r.waMessageId||'')+idx} className="p-2 bg-white rounded border border-black/10">
