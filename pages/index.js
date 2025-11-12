@@ -76,7 +76,8 @@ export default function Home() {
             cpf: ev.cpf || '—',
             solicitacao: ev.solicitacao || '—',
             reactor: ev.reactor || '—',
-            waMessageId: ev.waMessageId || ''
+            waMessageId: ev.waMessageId || '',
+            text: ev.text || ''
           }, ...prev].slice(0, 50));
         } catch {}
       });
@@ -305,8 +306,8 @@ export default function Home() {
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
               {replies.map((r, idx) => (
                 <div key={(r.waMessageId||'')+idx} className="p-2 bg-white rounded border border-black/10">
-                  <div className="text-sm font-medium">{r.solicitacao || '—'}</div>
-                  <div className="text-xs text-black/70">CPF: {r.cpf || '—'}</div>
+                  <div className="text-sm font-medium break-words whitespace-pre-line">{r.text || '—'}</div>
+                  <div className="text-xs text-black/70 mt-1">CPF: {r.cpf || '—'}</div>
                   <div className="text-[11px] opacity-60 mt-1">{new Date(r.at || Date.now()).toLocaleString()}</div>
                 </div>
               ))}
