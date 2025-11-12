@@ -18,6 +18,8 @@ export default function Home() {
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [backendUrl, setBackendUrl] = useState('');
+  const [replies, setReplies] = useState([]);
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -48,6 +50,42 @@ export default function Home() {
     const id = setInterval(loadStats, 15000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    try {
+      const fromEnv = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      const fromStore = typeof window !== 'undefined' ? (localStorage.getItem('velotax_backend') || '') : '';
+      const url = String(fromEnv || fromStore || '').trim();
+      if (url) setBackendUrl(url.replace(/\/$/, ''));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!backendUrl) return;
+    let es;
+    try {
+      es = new EventSource(`${backendUrl}/stream/replies`);
+      es.addEventListener('init', (e) => {
+        try {
+          const arr = JSON.parse(e.data || '[]');
+          if (Array.isArray(arr)) setReplies(arr.slice(-50).reverse());
+        } catch {}
+      });
+      es.addEventListener('reply', (e) => {
+        try {
+          const ev = JSON.parse(e.data || '{}');
+          setReplies((prev) => [{
+            at: ev.at,
+            cpf: ev.cpf || '—',
+            solicitacao: ev.solicitacao || '—',
+            reactor: ev.reactor || '—',
+            waMessageId: ev.waMessageId || ''
+          }, ...prev].slice(0, 50));
+        } catch {}
+      });
+    } catch {}
+    return () => { try { es && es.close(); } catch {} };
+  }, [backendUrl]);
 
   useEffect(() => {
     const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
@@ -257,6 +295,39 @@ export default function Home() {
               <a href="/credito_pessoal_velotax.html" className="btn-primary px-3 py-2 text-sm">Crédito Pessoal</a>
             </div>
           </div>
+        </div>
+        <div className="fixed right-4 top-24 w-80 max-w-[90vw] bg-white border border-black/10 rounded-xl shadow-lg p-3 z-40">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
+            <div className="text-sm font-semibold">Respostas (tempo real)</div>
+            <button type="button" onClick={() => {
+              try {
+                const v = prompt('Backend URL (ex.: https://seu-servico.onrender.com)', backendUrl || '');
+                if (v !== null) {
+                  const val = String(v).trim().replace(/\/$/, '');
+                  setBackendUrl(val);
+                  if (typeof window !== 'undefined') localStorage.setItem('velotax_backend', val);
+                }
+              } catch {}
+            }} className="ml-auto text-xs px-2 py-1 rounded border">{backendUrl ? 'Configurar' : 'Definir URL'}</button>
+          </div>
+          {!backendUrl && (
+            <div className="text-xs text-black/60">Defina o Backend URL para ativar o stream.</div>
+          )}
+          {backendUrl && replies.length === 0 && (
+            <div className="text-xs text-black/60">Aguardando respostas…</div>
+          )}
+          {backendUrl && replies.length > 0 && (
+            <div className="space-y-2 max-h-80 overflow-auto pr-1">
+              {replies.map((r, idx) => (
+                <div key={(r.waMessageId||'')+idx} className="p-2 bg-white rounded border border-black/10">
+                  <div className="text-sm font-medium">{r.solicitacao || '—'}</div>
+                  <div className="text-xs text-black/70">CPF: {r.cpf || '—'}</div>
+                  <div className="text-[11px] opacity-60 mt-1">{new Date(r.at || Date.now()).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
