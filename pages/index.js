@@ -20,6 +20,8 @@ export default function Home() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [backendUrl, setBackendUrl] = useState('https://whatsapp-api-y40p.onrender.com');
   const [replies, setReplies] = useState([]);
+  const [myAgent, setMyAgent] = useState('');
+  const norm = (s='') => String(s).toLowerCase().trim().replace(/\s+/g,' ');
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -53,6 +55,13 @@ export default function Home() {
 
   useEffect(() => {
     try {
+      const a = localStorage.getItem('velotax_agent') || '';
+      setMyAgent(a);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
       setBackendUrl((v) => (v ? v.replace(/\/$/, '') : 'https://whatsapp-api-y40p.onrender.com'));
     } catch {}
   }, []);
@@ -61,7 +70,8 @@ export default function Home() {
     if (!backendUrl) return;
     let es;
     try {
-      es = new EventSource(`${backendUrl}/stream/replies`);
+      const q = myAgent ? `?agent=${encodeURIComponent(myAgent)}` : '';
+      es = new EventSource(`${backendUrl}/stream/replies${q}`);
       es.addEventListener('init', (e) => {
         try {
           const arr = JSON.parse(e.data || '[]');
@@ -71,19 +81,31 @@ export default function Home() {
       es.addEventListener('reply', (e) => {
         try {
           const ev = JSON.parse(e.data || '{}');
+          const extractCpf = (s='') => {
+            try {
+              const m = String(s).match(/CPF\s*:\s*([^\n]+)/i);
+              if (m && m[1]) {
+                const dig = String(m[1]).replace(/\D/g, '');
+                return dig || null;
+              }
+            } catch {}
+            return null;
+          };
+          const displayCpf = ev.cpf || extractCpf(ev.text || '') || '—';
           setReplies((prev) => [{
             at: ev.at,
-            cpf: ev.cpf || '—',
+            cpf: displayCpf,
             solicitacao: ev.solicitacao || '—',
             reactor: ev.reactor || '—',
             waMessageId: ev.waMessageId || '',
-            text: ev.text || ''
+            text: ev.text || '',
+            agente: ev.agente || ''
           }, ...prev].slice(0, 50));
         } catch {}
       });
     } catch {}
     return () => { try { es && es.close(); } catch {} };
-  }, [backendUrl]);
+  }, [backendUrl, myAgent]);
 
   useEffect(() => {
     const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
@@ -204,9 +226,13 @@ export default function Home() {
                     <div className="text-2xl font-semibold">{stats.done}</div>
                   </div>
                 </div>
-                <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
-                  {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <a href="/api/logs/export.xlsx" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar XLSX (com gráficos)</a>
+                  <a href="/api/logs/export" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar CSV de Logs</a>
+                  <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
+                    {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
+                  </button>
+                </div>
               </div>
               <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
                 <div className="flex items-center gap-2 mb-3">
@@ -304,7 +330,7 @@ export default function Home() {
           )}
           {replies.length > 0 && (
             <div className="space-y-2 max-h-80 overflow-auto pr-1">
-              {replies.map((r, idx) => (
+              {(replies.filter(r => myAgent ? norm(r.agente||'')===norm(myAgent) : true)).map((r, idx) => (
                 <div key={(r.waMessageId||'')+idx} className="p-2 bg-white rounded border border-black/10">
                   <div className="text-sm font-medium break-words whitespace-pre-line">{r.text || '—'}</div>
                   <div className="text-xs text-black/70 mt-1">CPF: {r.cpf || '—'}</div>
@@ -312,6 +338,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          )}
+          {replies.length > 0 && myAgent && (replies.filter(r => norm(r.agente||'')===norm(myAgent))).length === 0 && (
+            <div className="text-xs text-black/60 mt-2">Nenhuma resposta para seu agente.</div>
+          )}
+          {!myAgent && replies.length > 0 && (
+            <div className="text-xs text-black/60 mt-2">Defina seu nome de agente no formulário para filtrar suas respostas.</div>
           )}
         </div>
       </div>
