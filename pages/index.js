@@ -227,8 +227,6 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href="/api/logs/export.xlsx" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar XLSX (com gráficos)</a>
-                  <a href="/api/logs/export" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar CSV de Logs</a>
                   <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
                     {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
                   </button>

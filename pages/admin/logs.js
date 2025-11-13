@@ -265,7 +265,13 @@ export default function AdminLogs() {
 
   return (
     <div className="min-h-screen container-pad py-8 max-w-6xl mx-auto">
-      <h1 className="titulo-principal mb-4">Logs</h1>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h1 className="titulo-principal">Logs</h1>
+        <div className="flex items-center gap-2">
+          <a href="/api/logs/export.xlsx" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar XLSX (com gráficos)</a>
+          <a href="/api/logs/export" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar CSV</a>
+        </div>
+      </div>
       <div className="mb-3 text-sm text-black/70">{loading ? 'Atualizando…' : 'Atualizado'}</div>
       <div className="p-4 bg-white rounded border border-black/10 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
