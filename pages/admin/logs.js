@@ -268,7 +268,25 @@ export default function AdminLogs() {
       <div className="flex items-center justify-between gap-3 mb-4">
         <h1 className="titulo-principal">Logs</h1>
         <div className="flex items-center gap-2">
-          <a href="/api/logs/export.xlsx" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar XLSX (com gráficos)</a>
+          {/* Build export URL with current filters */}
+          {(() => {
+            const params = new URLSearchParams();
+            if (dateFrom) params.set('dateFrom', dateFrom);
+            if (dateTo) params.set('dateTo', dateTo);
+            if (hourDay) params.set('hourDay', hourDay);
+            if (selectedAgents.length) {
+              const labels = selectedAgents.map((k) => (agentGroups[k]?.label || k));
+              params.set('agents', labels.join(','));
+            }
+            if (selectedTypes.length) {
+              const labels = selectedTypes.map((k) => (typeGroups[k]?.label || k));
+              params.set('types', labels.join(','));
+            }
+            const xlsxUrl = `/api/logs/export.xlsx?${params.toString()}`;
+            return (
+              <a href={xlsxUrl} target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar XLSX (com gráficos)</a>
+            );
+          })()}
           <a href="/api/logs/export" target="_blank" rel="noopener" className="text-sm px-3 py-2 rounded border hover:opacity-90">Baixar CSV</a>
         </div>
       </div>
