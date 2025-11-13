@@ -1,10 +1,6 @@
 import prisma from '@/lib/prisma';
 import ExcelJS from 'exceljs';
 
-// Try to load chart renderer; optional dependency in serverless
-let ChartJSNodeCanvas = null;
-try { ({ ChartJSNodeCanvas } = require('chartjs-node-canvas')); } catch {}
-
 const brand = {
   bg: 'F8FAFC', // slate-50
   text: '0B1220', // near black
@@ -28,24 +24,20 @@ function summarize(logs) {
 }
 
 async function renderChartImage({ labels, data, title }) {
-  if (!ChartJSNodeCanvas) return null;
   try {
-    const width = 960; const height = 420;
-    const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour: '#ffffff' });
-    const config = {
+    const cfg = {
       type: 'bar',
       data: {
         labels,
         datasets: [{
           label: title,
           data,
-          backgroundColor: `rgba(14,165,233,0.8)`,
-          borderColor: `#0EA5E9`,
-          borderWidth: 1,
+          backgroundColor: 'rgba(14,165,233,0.8)',
+          borderColor: '#0EA5E9',
+          borderWidth: 1
         }]
       },
       options: {
-        responsive: false,
         plugins: {
           legend: { display: false },
           title: { display: true, text: title, color: '#0B1220', font: { size: 16, weight: '600' } }
@@ -56,8 +48,12 @@ async function renderChartImage({ labels, data, title }) {
         }
       }
     };
-    const buffer = await chartJSNodeCanvas.renderToBuffer(config);
-    return buffer;
+    const url = 'https://quickchart.io/chart';
+    const params = new URLSearchParams({ c: JSON.stringify(cfg), width: '960', height: '420', backgroundColor: 'white', format: 'png' });
+    const r = await fetch(`${url}?${params.toString()}`);
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    return buf;
   } catch {
     return null;
   }
