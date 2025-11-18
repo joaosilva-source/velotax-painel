@@ -27,14 +27,25 @@ export default async function handler(req, res) {
       return out;
     };
 
-    // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH ou data/document 1)
+    // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH ou data/document 1 / document 1.pdf)
     try {
       const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : 'data/document 1';
       const absText = path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath);
       let textBase = '';
-      try {
-        textBase = fs.readFileSync(absText, 'utf8');
-      } catch {}
+      // 0a) tentar TXT puro
+      try { textBase = fs.readFileSync(absText, 'utf8'); } catch {}
+      // 0b) se TXT não existir, tentar PDF (mesmo caminho com .pdf ou caminho já com .pdf)
+      if (!textBase || !textBase.trim()) {
+        try {
+          const pdfPath = absText.endsWith('.pdf') ? absText : `${absText}.pdf`;
+          if (fs.existsSync(pdfPath)) {
+            const pdfParse = (await import('pdf-parse')).default;
+            const buf = fs.readFileSync(pdfPath);
+            const pdfData = await pdfParse(buf);
+            textBase = String(pdfData?.text || '');
+          }
+        } catch {}
+      }
       if (textBase && textBase.trim()) {
         const sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
         const qTokens = new Set(tokens(pergunta));
