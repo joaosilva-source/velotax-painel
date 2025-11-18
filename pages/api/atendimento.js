@@ -120,18 +120,34 @@ export default async function handler(req, res) {
 
         const bestText = scored[0]?.sec || '';
         if (bestText) {
+          // Filtrar linhas do trecho para evitar mistura de temas
+          const keepLine = (ln) => {
+            const lnTok = new Set(tokens(ln));
+            let overlap = 0;
+            for (const t of qTokens) if (lnTok.has(t)) overlap++;
+            return overlap >= 1 || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
+          };
+          const filtered = bestText
+            .split(/\n+/g)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .filter(keepLine)
+            .join('\n');
+          const contextText = (filtered && filtered.length > 120 ? filtered : bestText).slice(0, 1600);
           const apiKey = process.env.GROQ_API_KEY || '';
           if (apiKey) {
             const contexto = [
               'Você é um assistente de atendimento da Velotax. Escreva uma resposta formal, técnica e neutra, em formato de e-mail institucional.',
               'Use a base textual fornecida como CONTEXTO TÉCNICO (reformule com suas palavras, não copie literalmente).',
               'Não inclua emojis, gírias ou promessas. Seja claro, objetivo e respeitoso.',
+              'Responda EXCLUSIVAMENTE sobre o assunto da pergunta. Não mencione temas não relacionados (ex.: malha fina, e-CAC, pendências) a menos que a pergunta contenha explicitamente essas palavras.',
+              'Se algum trecho do contexto trouxer tópicos diferentes, ignore-os e mantenha o foco apenas no tema solicitado.',
             ].join('\n');
             const userMsg = [
               `Pergunta do cliente: ${String(pergunta).trim()}`,
               '',
               'Contexto técnico extraído da base (não copiar, apenas usar como referência):',
-              bestText,
+              contextText,
               '',
               'Escreva a resposta final como e-mail com:',
               '- Agradecimento inicial',
@@ -152,7 +168,7 @@ export default async function handler(req, res) {
                     { role: 'system', content: contexto },
                     { role: 'user', content: userMsg }
                   ],
-                  temperature: 0.35
+                  temperature: 0.2
                 })
               });
               if (groqResp.ok) {
@@ -171,7 +187,7 @@ export default async function handler(req, res) {
             `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
             '',
             'Orientação:',
-            bestText,
+            contextText,
             '',
             'Permanecemos à disposição para qualquer esclarecimento adicional.'
           ].join('\n');
