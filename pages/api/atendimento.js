@@ -112,6 +112,11 @@ export default async function handler(req, res) {
       .replace(/\s+/g, ' ')
       .trim();
     const tokens = (s) => normalize(s).split(' ').filter(Boolean);
+    const ngrams = (arr, n) => {
+      const out = [];
+      for (let i = 0; i <= arr.length - n; i++) out.push(arr.slice(i, i + n).join(' '));
+      return out;
+    };
 
     // 2) Construir índice de linhas com tema, palavras e sinônimos
     const base = dataRows.map((r) => {
@@ -125,12 +130,17 @@ export default async function handler(req, res) {
         ...tokens(sinonimos.replace(/[;,]/g, ' ')),
         ...tokens(tema)
       ];
+      // também indexar conteúdo inteiro (pergunta+resposta) para matching quando keywords estiverem vazias
+      const contentNorm = normalize(`${perguntaEx} ${respostaEx}`);
+      const contentTokens = new Set(tokens(contentNorm));
       return {
         pergunta: perguntaEx,
         resposta: respostaEx,
         tema,
         temaKey: normalize(tema),
         kws: Array.from(new Set(kws)).filter(Boolean),
+        contentNorm,
+        contentTokens,
       };
     }).filter((x) => (x.pergunta || x.resposta));
 
@@ -138,20 +148,27 @@ export default async function handler(req, res) {
     const qNorm = normalize(pergunta);
     const qTokens = new Set(tokens(pergunta));
     const temaScore = new Map();
+    const qTokArr = Array.from(qTokens);
+    const qBi = ngrams(qTokArr, 2);
+    const qTri = ngrams(qTokArr, 3);
     for (const row of base) {
       let score = 0;
       // Pesos ajustados:
       // +5 se inclui nome do tema (substring), +3 se token exato bate com keyword/sinônimo, +1 se substring
       if (row.temaKey && qNorm.includes(row.temaKey)) score += 5;
-      // Pontos por cada keyword/sinonimo contido
       for (const kw of row.kws) {
         if (!kw) continue;
         if (qTokens.has(kw)) score += 3;
         else if (qNorm.includes(kw)) score += 1;
       }
-      if (score > 0) {
-        temaScore.set(row.temaKey, (temaScore.get(row.temaKey) || 0) + score);
-      }
+      // Conteúdo (pergunta/resposta) como sinal adicional
+      // +2 por token exato presente no conteúdo
+      for (const t of qTokens) if (row.contentTokens.has(t)) score += 2;
+      // +4 para cada bi-grama encontrado no conteúdo
+      for (const b of qBi) if (b && row.contentNorm.includes(b)) score += 4;
+      // +6 para cada tri-grama encontrado no conteúdo
+      for (const tr of qTri) if (tr && row.contentNorm.includes(tr)) score += 6;
+      temaScore.set(row.temaKey, (temaScore.get(row.temaKey) || 0) + score);
     }
 
     let selectedTemaKey = '';
@@ -170,7 +187,16 @@ export default async function handler(req, res) {
     // 4) Se nenhum tema claro, responder solicitando mais informações por email
     if (!selectedTemaKey) {
       const emailTexto = `Agradecemos o seu contato. Para prosseguirmos com precisão, precisamos confirmar alguns dados sobre o assunto da sua solicitação. Por gentileza, responda este e-mail informando:\n\n• Tema específico (ex.: Crédito do Trabalhador, Restituição, Regularização)\n• Descrição breve do caso\n• Documentos já enviados ou pendentes\n\nAssim que recebermos as informações, seguiremos com a orientação adequada.`;
-      return res.status(200).json({ resposta: emailTexto });
+      // NOVO: antes de desistir, tente escolher o melhor tema pelo maior score absoluto
+      if (temaScore.size) {
+        const best = Array.from(temaScore.entries()).sort((a,b)=>b[1]-a[1])[0];
+        if (best && best[1] > 0) {
+          selectedTemaKey = best[0];
+        }
+      }
+      if (!selectedTemaKey) {
+        return res.status(200).json({ resposta: emailTexto });
+      }
     }
 
     // 5) Filtrar base apenas para o tema selecionado e ranquear exemplos por similaridade
