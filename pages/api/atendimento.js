@@ -361,7 +361,7 @@ export default async function handler(req, res) {
         const qTokArr = Array.from(qTokens);
         const qBi = ngrams(qTokArr, 2);
         const qTri = ngrams(qTokArr, 3);
-        const qNorm = qNorm;
+        // usar qNorm já definido fora deste bloco
 
         const scored = sections.map((sec) => {
           const secNorm = normalize(sec);
@@ -420,26 +420,56 @@ export default async function handler(req, res) {
           const contextText = topBullets.join('\n');
           const apiKey = process.env.GROQ_API_KEY || '';
 
-          // Se veio via router (tema explícito), só use formato determinístico imediato
-          // quando NÃO houver preferências aprendidas. Caso haja prefer/avoid, deixe o LLM
-          // considerar essas instruções para moldar a resposta.
+          // Construir documento virtual de diretrizes de feedback (por tema) para sempre consultar no LLM
           const viaRouter = Array.isArray(req.__allowedRouterTerms) && req.__allowedRouterTerms.length > 0;
-          const hasLearnedPrefs = (preferTerms && preferTerms.length) || (avoidTerms && avoidTerms.length);
-          if (viaRouter && !hasLearnedPrefs) {
-            const corpo = [
-              'Agradecemos o seu contato.',
-              '',
-              `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
-              '',
-              'Orientações objetivas:',
-              ...topBullets.map((b, i) => `${i + 1}. ${b}`),
-              '',
-              'Permanecemos à disposição para qualquer esclarecimento adicional.',
-              'Atenciosamente,',
-              'Equipe Velotax.'
-            ].join('\n');
-            return res.status(200).json({ resposta: corpo });
-          }
+          const selectedFileName = (() => { try { const p = candidatePaths?.[0] || ''; return String(path.basename(p||'')).replace(/\.[^.]+$/,''); } catch { return ''; } })();
+          const allowedTermsForGuidelines = Array.isArray(req.__allowedRouterTerms) ? req.__allowedRouterTerms : [];
+          const buildGuidelines = () => {
+            try {
+              const fbFile = path.join(process.cwd(), 'data', 'feedback.json');
+              if (!fs.existsSync(fbFile)) return '';
+              const arr = JSON.parse(fs.readFileSync(fbFile,'utf8')||'[]');
+              if (!Array.isArray(arr) || !arr.length) return '';
+              const qset = new Set(qTokens);
+              const allowSet = new Set(allowedTermsForGuidelines.map(x=>normalize(String(x||''))));
+              const fileTok = new Set(normalize(selectedFileName).split(' ').filter(Boolean));
+              const relevant = [];
+              for (const it of arr) {
+                const desc = String(it?.descricao||'');
+                const tema = String(it?.tema||'');
+                const fqt = new Set(normalize(String(it?.pergunta||'')).split(' ').filter(Boolean));
+                const dTok = new Set(normalize(desc).split(' ').filter(Boolean));
+                let score = 0;
+                for (const t of dTok) if (qset.has(t)) score += 1;
+                for (const t of fqt) if (qset.has(t)) score += 0.5;
+                for (const t of dTok) if (allowSet.has(t)) score += 1.5;
+                for (const t of dTok) if (fileTok.has(t)) score += 1.2;
+                if (tema) {
+                  const tn = normalize(tema).split(' ').filter(Boolean);
+                  for (const t of tn) if (qset.has(t) || allowSet.has(t) || fileTok.has(t)) score += 1.5;
+                }
+                if (score >= 2) relevant.push({ desc, tema, score });
+              }
+              relevant.sort((a,b)=>b.score-a.score);
+              const dos = [];
+              const donts = [];
+              for (const r of relevant.slice(0, 20)) {
+                const s = r.desc.toLowerCase();
+                if (/\b(nao|não|evite|evitar|n\u00E3o)\b/.test(s)) donts.push(r.desc);
+                else dos.push(r.desc);
+              }
+              const uniq = (arr)=>Array.from(new Set(arr.map(x=>x.trim())));
+              const dosU = uniq(dos).slice(0,8);
+              const dontsU = uniq(donts).slice(0,8);
+              if (!dosU.length && !dontsU.length) return '';
+              return [
+                'Diretrizes aprendidas por tema (compilar):',
+                dosU.length ? ('- Faça: ' + dosU.join(' | ')) : '',
+                dontsU.length ? ('- Evite: ' + dontsU.join(' | ')) : ''
+              ].filter(Boolean).join('\n');
+            } catch { return ''; }
+          };
+          const guidelines = buildGuidelines();
           // 4a) Tentativa 1: Gemini (principal)
           try {
             const gkey = (process.env.GEMINI_API_KEY || '').trim();
@@ -452,7 +482,7 @@ export default async function handler(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [
-                    { role: 'user', parts: [ { text: `${contexto}\n\nRegras obrigatórias:\n- Não repita a solicitação do cliente em nenhuma parte da resposta.\n- Se o assunto for contratação/orientação, inclua chamada clara para ação no app Velotax (acessar o app e realizar a simulação de crédito).\n- Mantenha tom profissional e objetivo em itens curtos.\n\nConsiderações aprendidas (feedback):\n- Prefira: ${preferTerms.join(', ') || '—'}\n- Evite: ${avoidTerms.join(', ') || '—'}\n\n${userMsg}` } ] }
+                    { role: 'user', parts: [ { text: `${contexto}\n\nRegras obrigatórias:\n- Não repita a solicitação do cliente em nenhuma parte da resposta.\n- Se o assunto for contratação/orientação, inclua chamada clara para ação no app Velotax (acessar o app e realizar a simulação de crédito).\n- Mantenha tom profissional e objetivo em itens curtos.\n\n${guidelines ? guidelines + '\n\n' : ''}Considerações aprendidas (feedback):\n- Prefira: ${preferTerms.join(', ') || '—'}\n- Evite: ${avoidTerms.join(', ') || '—'}\n\n${userMsg}` } ] }
                   ]
                 }),
                 signal: controller.signal
@@ -579,19 +609,23 @@ export default async function handler(req, res) {
               }
             } catch {}
           }
-          // Fallback de template
-          const respostaFinal = [
-            'Agradecemos o seu contato.',
-            '',
-            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
-            '',
-            'Orientação:',
-            contextText,
-            '',
-            'Permanecemos à disposição para qualquer esclarecimento adicional.'
-          ].join('\n');
-          return res.status(200).json({ resposta: respostaFinal });
-        } else if (textFileExists) {
+          // Se todas as tentativas falharem, responder com template determinístico
+          try {
+            const corpo = [
+              'Agradecemos o seu contato.',
+              '',
+              `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+              '',
+              'Orientações objetivas:',
+              ...topBullets.map((b, i) => `${i + 1}. ${b}`),
+              '',
+              'Permanecemos à disposição para qualquer esclarecimento adicional.',
+              'Atenciosamente,',
+              'Equipe Velotax.'
+            ].join('\n');
+            return res.status(200).json({ resposta: corpo });
+          } catch {}
+if (textFileExists) {
           try { console.log('[ATENDIMENTO] base textual presente, nenhum trecho casou.'); } catch {}
           // Forçar uso de base textual quando presente
           const respostaFinal = [
