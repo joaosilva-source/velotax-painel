@@ -621,8 +621,10 @@ export default async function handler(req, res) {
             ].join('\n');
             return res.status(200).json({ resposta: corpo });
           } catch {}
+        }
       }
-    } catch {}
+    }
+    catch {}
 
     // 1) Fonte de dados: prioriza CSV local (DATA_CSV_PATH). Se não houver, usa Google Sheets (gid=0 ou lista informada)
     let csvTexts = [];
