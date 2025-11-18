@@ -29,6 +29,8 @@ export default async function handler(req, res) {
     // Preferências aprendidas por feedback (sem banir termos): prefer/avoid
     let preferTerms = [];
     let avoidTerms = [];
+    let avoidRepeatRequest = false;
+    let enforceCTAAppSim = false;
     try {
       const fbFile = path.join(process.cwd(), 'data', 'feedback.json');
       if (fs.existsSync(fbFile)) {
@@ -45,6 +47,14 @@ export default async function handler(req, res) {
             }
             if (t === 'negativo' || t === 'negative' || t === 'ruim' || t === 'bad') {
               for (const tk of toks) if (tk.length > 2) av.add(tk);
+            }
+            // Regras específicas (linguagem natural)
+            const dLow = desc.toLowerCase();
+            if (/(nao|não)\s*(precisa|necessita|deve)?\s*(ficar\s*)?(repetir|repetindo|repeticao|repetição|ecoar|eco)/.test(dLow) || /nao\s*repetir\s*a\s*solicitacao/.test(dLow)) {
+              avoidRepeatRequest = true;
+            }
+            if ((/acessar?\s*o?\s*app/.test(dLow) || /aplicativo/.test(dLow)) && /simula[cç][aã]o/.test(dLow)) {
+              enforceCTAAppSim = true;
             }
           }
           preferTerms = Array.from(pref);
@@ -388,8 +398,25 @@ export default async function handler(req, res) {
             score += preferHits * 2;
             score -= avoidHits * 1.5;
             return { clean, score };
-          }).filter(x => x.score > 0.25).sort((a,b)=>b.score - a.score);
-          const topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
+          })
+          .filter(x => x.score > 0.25)
+          .filter(x => {
+            if (!avoidRepeatRequest) return true;
+            // Evitar linhas que ecoem a pergunta: menção a 'você solicitou', 'sobre sua solicitação' ou alto overlap literal
+            const s = x.clean.toLowerCase();
+            if (/voc[eê]\s+solicitou|sobre\s+a\s+sua?\s+solicita[cç][aã]o|em\s+sua?\s+solicita[cç][aã]o/.test(s)) return false;
+            const common = new Set();
+            for (const t of qTokens) if (s.includes(t)) common.add(t);
+            return common.size < Math.max(3, Math.ceil(qTokens.size * 0.5));
+          })
+          .sort((a,b)=>b.score - a.score);
+          let topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
+          if (enforceCTAAppSim) {
+            const cta = 'Acesse o aplicativo Velotax e faça a simulação de crédito na seção "Simulação de Crédito" para concluir a contratação.';
+            if (!topBullets.some(l => l.toLowerCase().includes('simula'))) {
+              topBullets = [...topBullets.slice(0,5), cta];
+            }
+          }
           const contextText = topBullets.join('\n');
           const apiKey = process.env.GROQ_API_KEY || '';
 
@@ -425,7 +452,7 @@ export default async function handler(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [
-                    { role: 'user', parts: [ { text: `${contexto}\n\nConsiderações aprendidas (feedback):\n- Prefira: ${preferTerms.join(', ') || '—'}\n- Evite: ${avoidTerms.join(', ') || '—'}\n\n${userMsg}` } ] }
+                    { role: 'user', parts: [ { text: `${contexto}\n\nRegras obrigatórias:\n- Não repita a solicitação do cliente em nenhuma parte da resposta.\n- Se o assunto for contratação/orientação, inclua chamada clara para ação no app Velotax (acessar o app e realizar a simulação de crédito).\n- Mantenha tom profissional e objetivo em itens curtos.\n\nConsiderações aprendidas (feedback):\n- Prefira: ${preferTerms.join(', ') || '—'}\n- Evite: ${avoidTerms.join(', ') || '—'}\n\n${userMsg}` } ] }
                   ]
                 }),
                 signal: controller.signal
