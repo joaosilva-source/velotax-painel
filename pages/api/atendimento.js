@@ -1,4 +1,6 @@
 // pages/api/atendimento.js
+import fs from 'fs';
+import path from 'path';
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,27 +12,35 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Pergunta obrigatória.' });
     }
 
-    // 1) Carregar CSV da(s) aba(s) informada(s): por padrão gid=0; aceitar lista em body.gids (ex: "0,12345")
-    const gidsList = String(gids || '0')
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-    const fetchCsv = async (gid) => {
-      const url = `https://docs.google.com/spreadsheets/d/1tnWusrOW-UXHFM8GT3o0Du93QDwv5G3Ylvgebof9wfQ/export?format=csv&gid=${encodeURIComponent(gid)}`;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('Falha ao carregar uma das abas da planilha.');
-      return await r.text();
-    };
-    const csvTexts = [];
-    for (const gid of gidsList) {
+    // 1) Fonte de dados: prioriza CSV local (DATA_CSV_PATH). Se não houver, usa Google Sheets (gid=0 ou lista informada)
+    let csvTexts = [];
+    const localPath = process.env.DATA_CSV_PATH ? String(process.env.DATA_CSV_PATH) : 'data/faq.csv';
+    if (localPath) {
       try {
-        csvTexts.push(await fetchCsv(gid));
-      } catch (e) {
-        // ignora abas que falharem, segue com as demais
+        const abs = path.isAbsolute(localPath) ? localPath : path.join(process.cwd(), localPath);
+        const buf = fs.readFileSync(abs);
+        csvTexts = [buf.toString('utf8')];
+      } catch {
+        csvTexts = [];
       }
     }
     if (!csvTexts.length) {
-      return res.status(500).json({ error: 'Não foi possível carregar a planilha (todas as abas falharam).' });
+      const gidsList = String(gids || '0')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const fetchCsv = async (gid) => {
+        const url = `https://docs.google.com/spreadsheets/d/1tnWusrOW-UXHFM8GT3o0Du93QDwv5G3Ylvgebof9wfQ/export?format=csv&gid=${encodeURIComponent(gid)}`;
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('Falha ao carregar uma das abas da planilha.');
+        return await r.text();
+      };
+      for (const gid of gidsList) {
+        try { csvTexts.push(await fetchCsv(gid)); } catch {}
+      }
+      if (!csvTexts.length) {
+        return res.status(500).json({ error: 'Não foi possível carregar a planilha (todas as abas falharam).' });
+      }
     }
 
     // 2) Parse CSV simples com suporte a aspas
@@ -171,6 +181,54 @@ export default async function handler(req, res) {
 
     const best = scoredAll[0] || null;
     const raw = (best && String(best.resposta || '').trim()) || '';
+
+    // 4) Se houver GROQ_API_KEY, reescrever a resposta como e-mail contextualizado (sem colar literal)
+    const apiKey = process.env.GROQ_API_KEY || '';
+    if (apiKey && raw) {
+      const contexto = [
+        'Você é um assistente de atendimento da Velotax. Escreva uma resposta formal, técnica e neutra, em formato de e-mail institucional.',
+        'Use a orientação da base como CONTEXTO TÉCNICO (reformule com suas palavras, não copie literalmente).',
+        'Não inclua emojis, gírias ou promessas. Seja claro, objetivo e respeitoso.',
+      ].join('\n');
+      const userMsg = [
+        `Pergunta do cliente: ${String(pergunta).trim()}`,
+        '',
+        'Contexto técnico extraído da base (não copiar, apenas usar como referência):',
+        raw,
+        '',
+        'Escreva a resposta final como e-mail com:',
+        '- Agradecimento inicial',
+        '- Contextualização breve (o que foi solicitado)',
+        '- Orientação clara e objetiva (com base no contexto)',
+        '- Encerramento institucional curto',
+      ].join('\n');
+      try {
+        const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages: [
+              { role: 'system', content: contexto },
+              { role: 'user', content: userMsg }
+            ],
+            temperature: 0.4
+          })
+        });
+        if (groqResp.ok) {
+          const j = await groqResp.json();
+          const llm = j?.choices?.[0]?.message?.content || '';
+          if (llm.trim()) {
+            return res.status(200).json({ resposta: llm });
+          }
+        }
+      } catch {}
+    }
+
+    // 4b) Fallback: modelo indisponível — formatar resposta com template institucional
     const respostaFinal = raw
       ? [
           'Agradecemos o seu contato.',

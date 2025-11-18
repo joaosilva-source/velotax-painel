@@ -78,8 +78,8 @@ export default function Atendimento() {
       </div>
 
       {loading && (
-        <div className="loading-overlay">
-          <div className="loading-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
             <img src="/brand/loading.gif" alt="Carregando" style={{ width: 72, height: 72, objectFit: 'contain' }} />
           </div>
         </div>
