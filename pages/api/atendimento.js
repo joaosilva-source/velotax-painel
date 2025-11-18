@@ -376,6 +376,65 @@ export default async function handler(req, res) {
 
         const bestText = scored[0]?.sec || '';
         if (bestText) {
+          // Caso especial: "Crédito do Trabalhador - Contratação" possui um array JSON com os passos
+          try {
+            const isCreditoTrab = /Cr[eé]dito do Trabalhador\.md$/i.test(String(bestDoc.path || '')) || /Cr[eé]dito do Trabalhador\.md/i.test(String(bestDoc.path || ''));
+            if (qIsHowToContract && isCreditoTrab) {
+              const full = String(textBase || '');
+              const secRe = /^##\s*2\.[^\n]*contrata/i; // início da seção 2 (Contratação)
+              const allRe = /^##\s*\d+\./gm; // próximos títulos
+              let start = -1, end = -1;
+              const lines = full.split(/\n/);
+              for (let i=0;i<lines.length;i++) {
+                if (secRe.test(lines[i])) { start = i; break; }
+              }
+              if (start !== -1) {
+                end = lines.length;
+                for (let j=start+1;j<lines.length;j++) {
+                  if (allRe.test(lines[j])) { end = j; break; }
+                }
+                const sec = lines.slice(start, end).join('\n');
+                const jsonMatch = sec.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+                if (jsonMatch) {
+                  try {
+                    const arr = JSON.parse(jsonMatch[0]);
+                    if (Array.isArray(arr) && arr.length) {
+                      const cleanText = (s) => String(s||'')
+                        .replace(/\bUse a fala:\b/gi, '')
+                        .replace(/“|”|"/g, '"')
+                        .replace(/\s{2,}/g,' ')
+                        .trim();
+                      let bullets = arr.map((it, idx) => {
+                        const title = String(it?.title || '').trim();
+                        const content = cleanText(it?.content || '');
+                        return `${title ? title+': ' : ''}${content}`.trim();
+                      }).filter(Boolean);
+                      // limitar quantidade e garantir CTA
+                      bullets = bullets.slice(0, 6);
+                      const cta = 'Acesse o aplicativo Velotax e faça a simulação de crédito na seção "Simulação de Crédito" para concluir a contratação.';
+                      if (!bullets.some(l => /simula[cç][aã]o/i.test(l))) {
+                        if (bullets.length >= 6) bullets.pop();
+                        bullets.push(cta);
+                      }
+                      const corpo = [
+                        'Agradecemos o seu contato.',
+                        '',
+                        `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+                        '',
+                        'Orientações objetivas:',
+                        ...bullets.map((b,i)=>`${i+1}. ${b}`),
+                        '',
+                        'Permanecemos à disposição para qualquer esclarecimento adicional.',
+                        'Atenciosamente,',
+                        'Equipe Velotax.'
+                      ].join('\n');
+                      return res.status(200).json({ resposta: corpo });
+                    }
+                  } catch {}
+                }
+              }
+            }
+          } catch {}
           // Preparar linhas e reponderar por prefer/avoid (sem banir)
           const allowTerms = Array.isArray(req.__allowedRouterTerms) ? req.__allowedRouterTerms : [];
           const rawLines = bestText.split(/\n+/g).map((s) => s.trim()).filter(Boolean);
@@ -403,6 +462,8 @@ export default async function handler(req, res) {
             return { clean, score };
           })
           .filter(x => x.score > 0.25)
+          // remover FGTS se a pergunta não citou FGTS
+          .filter(x => qHasFGTS || !/\bfgts\b/i.test(x.clean))
           .filter(x => {
             if (!avoidRepeatRequest) return true;
             // Evitar linhas que ecoem a pergunta: menção a 'você solicitou', 'sobre sua solicitação' ou alto overlap literal
@@ -413,7 +474,20 @@ export default async function handler(req, res) {
             return common.size < Math.max(3, Math.ceil(qTokens.size * 0.5));
           })
           .sort((a,b)=>b.score - a.score);
-          let topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
+          let topBullets;
+          if (qIsHowToContract) {
+            const primary = scoredLines.filter(x => /(contrata(c|ç)[aã]o|contratar|simula(c|ç)[aã]o|app|aplicativo)/i.test(x.clean)).map(x=>x.clean);
+            const needed = Math.max(3, Math.min(6, primary.length));
+            const fill = scoredLines.map(x=>x.clean).filter(s => !primary.includes(s));
+            topBullets = [...primary.slice(0, 6)];
+            if (topBullets.length < needed) {
+              topBullets = [...topBullets, ...fill.slice(0, needed - topBullets.length)];
+            }
+            // limite final
+            topBullets = topBullets.slice(0, 6);
+          } else {
+            topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
+          }
           if (enforceCTAAppSim) {
             const cta = 'Acesse o aplicativo Velotax e faça a simulação de crédito na seção "Simulação de Crédito" para concluir a contratação.';
             if (!topBullets.some(l => l.toLowerCase().includes('simula'))) {
