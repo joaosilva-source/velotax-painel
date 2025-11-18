@@ -7,6 +7,7 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-2 text-white/80">
             <a className="px-3 py-1.5 rounded-md hover:bg-white/10 transition" href="#">Home</a>
             <a className="px-3 py-1.5 rounded-md bg-white/10" href="#">Envio</a>
+            <a className="px-3 py-1.5 rounded-md hover:bg-white/10" href="/atendimento">Atendimento</a>
             <a className="px-3 py-1.5 rounded-md hover:bg-white/10" href="#">Artigos</a>
             <a className="px-3 py-1.5 rounded-md hover:bg-white/10" href="#">Velotacademy</a>
           </nav>

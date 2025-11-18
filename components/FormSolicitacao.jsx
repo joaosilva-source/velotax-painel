@@ -119,8 +119,16 @@ export default function FormSolicitacao({ registrarLog }) {
 
   const montarMensagem = () => {
     const simNao = v => (v ? "✅ Sim" : "❌ Não");
-    let msg = `*Nova Solicitação Técnica - ${form.tipo}*\n\n`;
-    msg += `Agente: ${form.agente}\nCPF: ${form.cpf}\n\n`;
+    const typeMap = {
+      "Exclusão de Conta": "Exclusão de Conta",
+      "Exclusão de Chave PIX": "Exclusão de Chave PIX",
+      "Alteração de Dados Cadastrais": "Alteração de Dados Cadastrais",
+      "Reativação de Conta": "Reativação de Conta",
+    };
+    const tipoCanon = typeMap[form.tipo] || toTitleCase(String(form.tipo || ''));
+    const cpfNorm = String(form.cpf || '').replace(/\s+/g, ' ').trim();
+    let msg = `*Nova Solicitação Técnica - ${tipoCanon}*\n\n`;
+    msg += `Agente: ${form.agente}\nCPF: ${cpfNorm}\n\n`;
 
     if (form.tipo === "Exclusão de Conta") {
       msg += `Excluir conta Velotax: ${simNao(form.excluirVelotax)}\n`;
@@ -171,7 +179,7 @@ export default function FormSolicitacao({ registrarLog }) {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
-    const payload = { jid: defaultJid, mensagem: mensagemTexto, cpf: form.cpf, solicitacao: form.tipo };
+    const payload = { jid: defaultJid, mensagem: mensagemTexto, cpf: form.cpf, solicitacao: form.tipo, agente: agenteNorm || form.agente };
 
     try {
       // 1) Tentar enviar via WhatsApp se configurado
@@ -245,7 +253,7 @@ export default function FormSolicitacao({ registrarLog }) {
   };
 
   return (
-    <form onSubmit={enviar} className="space-y-5 relative">
+    <form onSubmit={enviar} className="space-y-5 relative" aria-busy={loading} aria-live="polite">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -336,8 +344,8 @@ export default function FormSolicitacao({ registrarLog }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <button disabled={loading} className={`btn-primary inline-flex items-center gap-2 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`} type="submit">
-          {loading && <span className="spinner" />}
+        <button disabled={loading} className={`btn-primary inline-flex items-center gap-2 transition-all duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`} type="submit">
+          {loading && <img src="/brand/loading.gif" alt="Carregando" style={{ width: 18, height: 18 }} />}
           {loading ? "Enviando..." : "Enviar Solicitação"}
         </button>
         <span className="text-sm text-white/70">Envia para o grupo padrão configurado</span>
@@ -378,13 +386,23 @@ export default function FormSolicitacao({ registrarLog }) {
         <div className="space-y-2 max-h-56 overflow-auto pr-1">
           {localLogs.map((l, idx) => {
             const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+            const s = String(l.status || '').toLowerCase();
+            const step = s === 'feito' ? 3 : (s === 'não feito' ? 2 : 1);
             return (
-              <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{icon}</span>
-                  <span className="text-sm">{l.cpf} — {l.tipo}</span>
+              <div key={idx} className="p-3 bg-white rounded border border-black/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{icon}</span>
+                    <span className="text-sm">{l.cpf} — {l.tipo}</span>
+                  </div>
+                  <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
                 </div>
-                <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                <div className="mt-2 flex items-center gap-1.5" aria-label={`progresso: ${s || 'em aberto'}`}>
+                  <span className={`h-1.5 w-8 rounded-full ${1 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
+                  <span className={`h-1.5 w-8 rounded-full ${2 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
+                  <span className={`h-1.5 w-8 rounded-full ${3 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
+                  <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
+                </div>
               </div>
             );
           })}
@@ -392,10 +410,10 @@ export default function FormSolicitacao({ registrarLog }) {
       </div>
 
       {loading && (
-        <div className="loading-overlay">
-          <div className="loading-card">
-            <span className="spinner" />
-            <span>Enviando solicitação…</span>
+        <div className="loading-overlay backdrop-blur-sm transition-opacity duration-200" style={{ background: 'linear-gradient(180deg, rgba(2,6,23,0.20), rgba(2,6,23,0.35))' }}>
+          <div className="loading-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+            <img src="/brand/loading.gif" alt="Carregando" style={{ width: 72, height: 72, objectFit: 'contain' }} />
+            <div className="mt-2 text-white/90 text-sm">Enviando solicitação…</div>
           </div>
         </div>
       )}

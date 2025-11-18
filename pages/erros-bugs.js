@@ -172,6 +172,15 @@ export default function ErrosBugs() {
                 <h1 className="titulo-principal mb-1">Erros / Bugs</h1>
                 <p className="text-white/80">Reporte problemas com anexos de imagem para o time</p>
               </div>
+
+        {loading && (
+          <div className="loading-overlay backdrop-blur-sm transition-opacity duration-200" style={{ background: 'linear-gradient(180deg, rgba(2,6,23,0.20), rgba(2,6,23,0.35))' }}>
+            <div className="loading-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
+              <img src="/brand/loading.gif" alt="Carregando" style={{ width: 72, height: 72, objectFit: 'contain' }} />
+              <div className="mt-2 text-white/90 text-sm">Enviando solicitação…</div>
+            </div>
+          </div>
+        )}
             </div>
             <a href="/" className="px-3 py-2 rounded bg-black/10 hover:bg-black/20 text-sm">← Voltar para a Home</a>
           </div>
@@ -181,17 +190,32 @@ export default function ErrosBugs() {
               <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
               <h2 className="text-lg font-semibold">Consulta de CPF</h2>
             </div>
-            <div className="flex flex-col md:flex-row gap-2 md:items-end">
+            <div className="flex flex-col md:flex-row gap-2 md:items-end" aria-busy={searchLoading} aria-live="polite">
               <div className="flex-1">
                 <label className="text-sm text-black/80">CPF</label>
                 <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} />
               </div>
-              <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2" disabled={searchLoading}>{searchLoading ? 'Buscando...' : 'Buscar'}</button>
+              <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2 inline-flex items-center gap-2 transition-all duration-200" disabled={searchLoading}>
+                {searchLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Buscando...</>) : 'Buscar'}
+              </button>
             </div>
             {searchCpf && (
               <div className="text-sm text-black/60 mt-2">{searchResults.length} registro(s) encontrado(s)</div>
             )}
-            {searchResults && searchResults.length > 0 && (
+            {searchLoading && (
+              <div className="space-y-2 mt-3 max-h-64">
+                {[...Array(4)].map((_,i) => (
+                  <div key={i} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between animate-pulse">
+                    <div>
+                      <div className="h-4 w-40 bg-black/10 rounded mb-1" />
+                      <div className="h-3 w-32 bg-black/10 rounded" />
+                    </div>
+                    <div className="h-3 w-24 bg-black/10 rounded" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {searchResults && searchResults.length > 0 && !searchLoading && (
               <div className="space-y-2 mt-3 max-h-64 overflow-auto">
                 {searchResults.slice(0,8).map((r) => (
                   <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
@@ -212,7 +236,7 @@ export default function ErrosBugs() {
             )}
           </div>
 
-          <form onSubmit={enviar} className="card p-6 space-y-5">
+          <form onSubmit={enviar} className="card p-6 space-y-5" aria-busy={loading} aria-live="polite">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-black/80">Agente</label>
@@ -308,7 +332,9 @@ export default function ErrosBugs() {
             </div>
 
             <div className="flex items-center gap-4">
-              <button type="submit" disabled={loading} className={`btn-primary ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}>{loading ? 'Enviando...' : 'Enviar'}</button>
+              <button type="submit" disabled={loading} className={`btn-primary inline-flex items-center gap-2 transition-all duration-200 ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                {loading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Enviando...</>) : 'Enviar'}
+              </button>
               {msg && <span className="text-sm text-black/70">{msg}</span>}
             </div>
           </form>
@@ -328,12 +354,29 @@ export default function ErrosBugs() {
               {localLogs.map((l, idx) => {
                 const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
                 return (
-                  <div key={idx} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{icon}</span>
-                      <span className="text-sm">{l.cpf || '—'} — {l.tipo}</span>
+                  <div key={idx} className="p-3 bg-white rounded border border-black/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{icon}</span>
+                        <span className="text-sm">{l.cpf || '—'} — {l.tipo}</span>
+                      </div>
+                      <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
                     </div>
-                    <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                    <div className="mt-2 flex items-center gap-2">
+                      {(() => {
+                        const s = String(l.status || '').toLowerCase();
+                        const step = s === 'feito' ? 3 : (s === 'não feito' ? 2 : 1);
+                        const Dot = (i) => (
+                          <span key={i} className={`h-1.5 w-8 rounded-full ${i <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
+                        );
+                        return (
+                          <div className="flex items-center gap-1.5" aria-label={`progresso: ${s || 'em aberto'}`}>
+                            {Dot(1)}{Dot(2)}{Dot(3)}
+                            <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 );
               })}

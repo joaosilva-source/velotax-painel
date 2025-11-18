@@ -29,9 +29,14 @@ export default function App({ Component, pageProps }) {
         toastOptions={{
           className: 'hot-toast',
           style: { background: 'transparent' },
-          success: { className: 'hot-toast hot-toast-success' },
-          error: { className: 'hot-toast hot-toast-error' }
+          duration: 3500,
+          success: { className: 'hot-toast hot-toast-success', duration: 3200 },
+          error: { className: 'hot-toast hot-toast-error', duration: 4200 }
         }}
+        containerStyle={{ inset: '16px' }}
+        gutter={8}
+        reverseOrder={false}
+        limit={3}
       />
 
       <div>

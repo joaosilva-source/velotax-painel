@@ -143,7 +143,7 @@ export default function AdminLogs() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/logs');
+        const res = await fetch('/api/logs?limit=2000&nocache=1');
         let data = [];
         try { data = await res.json(); } catch {}
         if (!Array.isArray(data)) data = [];

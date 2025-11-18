@@ -8,6 +8,11 @@
   --surface-strong: #FFFFFF;
 }
 
+/* Motion-safe: respeitar usuários que preferem menos animação */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
 /* Dark theme tokens */
 .dark {
   --background: #0B0F16;
@@ -55,6 +60,15 @@ body {
   --from: var(--accent);
   --to: #6a35ff;
   background-image: linear-gradient(90deg, var(--from), var(--to));
+}
+
+/* Focus rings consistentes e acessíveis */
+.btn-primary:focus-visible,
+button:focus-visible,
+a:focus-visible,
+.input:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 65%, transparent);
+  outline-offset: 2px;
 }
 
 .card {

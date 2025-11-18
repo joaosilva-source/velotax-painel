@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 
 // in-memory cache (per server instance)
 let cache = { data: null, ts: 0 };
-const CACHE_MS = 30 * 1000; // 30s
+const CACHE_MS = 10 * 1000; // 10s, evitar defasagem
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
@@ -23,12 +23,16 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const now = Date.now();
-      if (cache.data && now - cache.ts < CACHE_MS) {
+      const noCache = String(req.query?.nocache || '').trim() === '1';
+      if (!noCache && cache.data && now - cache.ts < CACHE_MS) {
         return res.json(cache.data);
       }
-      const list = await prisma.usageLog.findMany({ orderBy: { createdAt: 'desc' }, take: 200 });
-      cache = { data: list, ts: now };
-      return res.json(cache.data);
+      let limit = parseInt(String(req.query?.limit || '1000'), 10);
+      if (!Number.isFinite(limit)) limit = 1000;
+      limit = Math.max(50, Math.min(5000, limit));
+      const list = await prisma.usageLog.findMany({ orderBy: { createdAt: 'desc' }, take: limit });
+      if (!noCache) cache = { data: list, ts: now };
+      return res.json(list);
     } catch (e) {
       // Evitar quebrar a UI: devolve lista vazia
       return res.status(200).json([]);

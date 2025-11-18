@@ -399,15 +399,44 @@ export default async function handler(req, res) {
                   try {
                     const arr = JSON.parse(jsonMatch[0]);
                     if (Array.isArray(arr) && arr.length) {
-                      const cleanText = (s) => String(s||'')
-                        .replace(/\bUse a fala:\b/gi, '')
-                        .replace(/“|”|"/g, '"')
-                        .replace(/\s{2,}/g,' ')
-                        .trim();
-                      let bullets = arr.map((it, idx) => {
+                      const normalizeClient = (txt) => {
+                        let s = String(txt||'');
+                        // remover notas entre parênteses (Nota: ...)
+                        s = s.replace(/\(\s*Nota:[\s\S]*?\)/gi, ' ');
+                        // separar por 'Use a fala:' e aproveitar partes
+                        const parts = s.split(/Use a fala:\s*/i);
+                        let pre = (parts[0] || '').trim();
+                        let post = (parts[1] || '').trim();
+                        // limpar aspas e quebras
+                        pre = pre.replace(/[“”"']/g, '').replace(/\s+/g,' ').trim();
+                        post = post.replace(/[“”"']/g, '').replace(/\s+/g,' ').trim();
+                        // converter terceira pessoa -> segunda
+                        const to2nd = (t) => t
+                          .replace(/\bo cliente\b/gi, 'você')
+                          .replace(/\bO cliente\b/gi, 'Você')
+                          .replace(/\bOriente\s+o\s+cliente\b/gi, '')
+                          .replace(/\bPeça\s+que\s+/gi, '')
+                          .replace(/\bposso ajudar\b/gi, '')
+                          .replace(/\bVou te orientar[\s\S]*?\.?/gi, '')
+                          .replace(/\s{2,}/g,' ') // espaços extras
+                          .trim();
+                        pre = to2nd(pre);
+                        post = to2nd(post);
+                        // montar frase final priorizando instrução objetiva
+                        let out = '';
+                        if (pre && post) out = `${pre}. ${post}`;
+                        else out = pre || post;
+                        // ajustes finais
+                        out = out.replace(/\s*\.(\s*\.)+/g, '.').replace(/\s{2,}/g,' ').trim();
+                        return out;
+                      };
+                      let bullets = arr.map((it) => {
                         const title = String(it?.title || '').trim();
-                        const content = cleanText(it?.content || '');
-                        return `${title ? title+': ' : ''}${content}`.trim();
+                        const content = normalizeClient(it?.content || '');
+                        // manter título apenas se agregar clareza
+                        const keepTitle = /passo\s*\d+/i.test(title);
+                        const text = keepTitle && content ? `${title}: ${content}` : (content || title);
+                        return String(text||'').trim();
                       }).filter(Boolean);
                       // limitar quantidade e garantir CTA
                       bullets = bullets.slice(0, 6);

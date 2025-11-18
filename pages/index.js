@@ -212,23 +212,29 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-3 card hover:-translate-y-0.5 p-6">
               <div className="mb-6 flex items-center justify-between gap-3">
-                <div className="grid grid-cols-3 gap-3 w-full max-w-xl">
+                <div className="grid grid-cols-3 gap-3 w-full max-w-xl" aria-busy={statsLoading} aria-live="polite">
                   <div className="surface p-3 rounded-xl text-center">
                     <div className="text-xs text-black/60">Hoje</div>
-                    <div className="text-2xl font-semibold">{stats.today}</div>
+                    <div className="text-2xl font-semibold">
+                      {statsLoading ? <span className="inline-block h-6 w-16 bg-black/10 rounded animate-pulse" /> : stats.today}
+                    </div>
                   </div>
                   <div className="surface p-3 rounded-xl text-center">
                     <div className="text-xs text-black/60">Pendentes</div>
-                    <div className="text-2xl font-semibold">{stats.pending}</div>
+                    <div className="text-2xl font-semibold">
+                      {statsLoading ? <span className="inline-block h-6 w-16 bg-black/10 rounded animate-pulse" /> : stats.pending}
+                    </div>
                   </div>
                   <div className="surface p-3 rounded-xl text-center">
                     <div className="text-xs text-black/60">Feitas</div>
-                    <div className="text-2xl font-semibold">{stats.done}</div>
+                    <div className="text-2xl font-semibold">
+                      {statsLoading ? <span className="inline-block h-6 w-16 bg-black/10 rounded animate-pulse" /> : stats.done}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90">
-                    {statsLoading ? 'Atualizando…' : 'Atualizar agora'}
+                  <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90 inline-flex items-center gap-2 transition-all duration-200">
+                    {statsLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Atualizando…</>) : 'Atualizar agora'}
                   </button>
                 </div>
               </div>
@@ -237,17 +243,32 @@ export default function Home() {
                   <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
                   <h2 className="text-lg font-semibold">Consulta de CPF</h2>
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 md:items-end">
+                <div className="flex flex-col md:flex-row gap-2 md:items-end" aria-busy={searchLoading} aria-live="polite">
                   <div className="flex-1">
                     <label className="text-sm text-black/80">CPF</label>
                     <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} />
                   </div>
-                  <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2" disabled={searchLoading}>{searchLoading ? 'Buscando...' : 'Buscar'}</button>
+                  <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2 inline-flex items-center gap-2 transition-all duration-200" disabled={searchLoading}>
+                    {searchLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Buscando...</>) : 'Buscar'}
+                  </button>
                 </div>
                 {searchCpf && (
                   <div className="text-sm text-black/60 mt-2">{searchResults.length} registro(s) encontrado(s)</div>
                 )}
-                {searchResults && searchResults.length > 0 && (
+                {searchLoading && (
+                  <div className="space-y-2 mt-3 max-h-64">
+                    {[...Array(4)].map((_,i) => (
+                      <div key={i} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between animate-pulse">
+                        <div>
+                          <div className="h-4 w-40 bg-black/10 rounded mb-1" />
+                          <div className="h-3 w-32 bg-black/10 rounded" />
+                        </div>
+                        <div className="h-3 w-24 bg-black/10 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {searchResults && searchResults.length > 0 && !searchLoading && (
                   <div className="space-y-2 mt-3 max-h-64 overflow-auto">
                     {searchResults.slice(0,8).map((r) => (
                       <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
@@ -275,7 +296,19 @@ export default function Home() {
               </button>
               {historyOpen && (
                 <div className="mt-3">
-                  {agentHistoryLoading && <div className="text-sm opacity-70">Carregando…</div>}
+                  {agentHistoryLoading && (
+                    <div className="space-y-2" aria-busy={true} aria-live="polite">
+                      {[...Array(5)].map((_, i) => (
+                        <div key={i} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between animate-pulse">
+                          <div>
+                            <div className="h-4 w-48 bg-black/10 rounded mb-1" />
+                            <div className="h-3 w-24 bg-black/10 rounded" />
+                          </div>
+                          <div className="h-3 w-28 bg-black/10 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {!agentHistoryLoading && agentHistory.length === 0 && (
                     <div className="text-sm opacity-70">Nenhum registro.</div>
                   )}
@@ -292,7 +325,7 @@ export default function Home() {
                   </div>
                   {agentHistory.length > agentHistoryLimit && (
                     <div className="mt-3 text-right">
-                      <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90">
+                      <button type="button" onClick={() => setAgentHistoryLimit((n) => n + 50)} className="text-sm px-3 py-1 rounded border hover:opacity-90 transition-all duration-200">
                         Carregar mais ({agentHistory.length - agentHistoryLimit} restantes)
                       </button>
                     </div>
