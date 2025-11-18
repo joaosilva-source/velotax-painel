@@ -135,6 +135,95 @@ export default async function handler(req, res) {
             .join('\n');
           const contextText = (filtered && filtered.length > 120 ? filtered : bestText).slice(0, 1600);
           const apiKey = process.env.GROQ_API_KEY || '';
+          // 4a) Tentativa 1: LLM local (Ollama)
+          try {
+            const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+            const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
+            const controller = new AbortController();
+            const t = setTimeout(() => controller.abort(), 8000);
+            const resp = await fetch(`${ollamaUrl.replace(/\/$/, '')}/api/chat`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: ollamaModel,
+                stream: false,
+                messages: [
+                  { role: 'system', content: contexto },
+                  { role: 'user', content: userMsg }
+                ],
+                options: { temperature: 0.2 }
+              }),
+              signal: controller.signal
+            });
+            clearTimeout(t);
+            if (resp.ok) {
+              const j = await resp.json();
+              const llm = j?.message?.content || j?.choices?.[0]?.message?.content || '';
+              if (llm && llm.trim()) {
+                return res.status(200).json({ resposta: llm });
+              }
+            }
+          } catch {}
+
+          // 4a.2) Tentativa 2: LLM local OpenAI-compatible (vLLM), se configurado
+          try {
+            const localUrl = (process.env.LOCAL_LLM_URL || '').trim();
+            if (localUrl) {
+              const controller = new AbortController();
+              const t = setTimeout(() => controller.abort(), 8000);
+              const resp = await fetch(`${localUrl.replace(/\/$/, '')}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: process.env.LOCAL_LLM_MODEL || 'llama-3.1-8b-instruct',
+                  messages: [
+                    { role: 'system', content: contexto },
+                    { role: 'user', content: userMsg }
+                  ],
+                  temperature: 0.2
+                }),
+                signal: controller.signal
+              });
+              clearTimeout(t);
+              if (resp.ok) {
+                const j = await resp.json();
+                const llm = j?.choices?.[0]?.message?.content || '';
+                if (llm && llm.trim()) {
+                  return res.status(200).json({ resposta: llm });
+                }
+              }
+            }
+          } catch {}
+
+          // 4b) Tentativa 3: Gemini (Google)
+          try {
+            const gkey = (process.env.GEMINI_API_KEY || '').trim();
+            if (gkey) {
+              const gmodel = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
+              const controller = new AbortController();
+              const t = setTimeout(() => controller.abort(), 8000);
+              const gResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gmodel)}:generateContent?key=${encodeURIComponent(gkey)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    { role: 'user', parts: [ { text: `${contexto}\n\n${userMsg}` } ] }
+                  ]
+                }),
+                signal: controller.signal
+              });
+              clearTimeout(t);
+              if (gResp.ok) {
+                const j = await gResp.json();
+                const llm = j?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (llm && llm.trim()) {
+                  return res.status(200).json({ resposta: llm });
+                }
+              }
+            }
+          } catch {}
+
+          // 4c) Tentativa 4: Groq
           if (apiKey) {
             const contexto = [
               'Você é um assistente de atendimento da Velotax. Escreva uma resposta formal, técnica e neutra, em formato de e-mail institucional.',
@@ -156,6 +245,8 @@ export default async function handler(req, res) {
               '- Encerramento institucional curto',
             ].join('\n');
             try {
+              const controller = new AbortController();
+              const t = setTimeout(() => controller.abort(), 8000);
               const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -169,8 +260,10 @@ export default async function handler(req, res) {
                     { role: 'user', content: userMsg }
                   ],
                   temperature: 0.2
-                })
+                }),
+                signal: controller.signal
               });
+              clearTimeout(t);
               if (groqResp.ok) {
                 const j = await groqResp.json();
                 const llm = j?.choices?.[0]?.message?.content || '';
@@ -429,6 +522,13 @@ export default async function handler(req, res) {
     return res.status(200).json({ resposta: respostaFinal });
     
   } catch (e) {
-    return res.status(500).json({ error: 'Erro inesperado', details: String(e?.message || e) });
+    const respostaFinal = [
+      'Agradecemos o seu contato.',
+      '',
+      'No momento não foi possível concluir o processamento automático. Por favor, tente novamente em instantes.',
+      '',
+      'Permanecemos à disposição para qualquer esclarecimento adicional.'
+    ].join('\n');
+    return res.status(200).json({ resposta: respostaFinal });
   }
 }
