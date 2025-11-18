@@ -27,7 +27,8 @@ export default async function handler(req, res) {
       return out;
     };
     const bannedTerms = [
-      'malha', 'e-cac', 'e cac', 'pendenc', 'restitu', 'open finance', 'score', 'cartao', 'cartão'
+      'malha', 'e-cac', 'e cac', 'pendenc', 'restitu', 'open finance', 'score', 'cartao', 'cartão',
+      'banco do brasil', 'bb.com.br', 'recibo', 'declar'
     ];
 
     // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH) ou melhor documento em data/ e public/data
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
           const rawRouter = fs.readFileSync(routerPath, 'utf8');
           const router = JSON.parse(rawRouter || '{}');
           const qn = normalize(pergunta);
-          let bestRoute = { file: '', hits: 0 };
+          let bestRoute = { file: '', hits: 0, allowed: [] };
           for (const key of Object.keys(router || {})) {
             try {
               const entry = router[key];
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
                 const kn = normalize(kw);
                 if (kn && qn.includes(kn)) h++;
               }
-              if (h > bestRoute.hits) bestRoute = { file: entry?.file || '', hits: h };
+              if (h > bestRoute.hits) bestRoute = { file: entry?.file || '', hits: h, allowed: kws };
             } catch {}
           }
           if (bestRoute.file && bestRoute.hits > 0) {
@@ -78,6 +79,8 @@ export default async function handler(req, res) {
               // força uso apenas deste arquivo
               candidatePaths.length = 0;
               candidatePaths.push(abs1);
+              // guardar termos permitidos do router
+              req.__allowedRouterTerms = (bestRoute.allowed || []).map((s) => String(s || '')).filter(Boolean);
             }
           }
         }
@@ -229,6 +232,7 @@ export default async function handler(req, res) {
         const bestText = scored[0]?.sec || '';
         if (bestText) {
           // Filtrar linhas do trecho para evitar mistura de temas
+          const allowTerms = Array.isArray(req.__allowedRouterTerms) ? req.__allowedRouterTerms : [];
           const keepLine = (ln) => {
             const lnTok = new Set(tokens(ln));
             let overlap = 0;
@@ -236,7 +240,8 @@ export default async function handler(req, res) {
             // banir termos que não estejam na pergunta
             const bannedHit = bannedTerms.some(term => ln.toLowerCase().includes(term)) && !bannedTerms.some(term => qNorm.includes(term));
             if (bannedHit) return false;
-            return overlap >= 2 || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
+            const hasAllowed = allowTerms.some((t) => t && ln.toLowerCase().includes(String(t).toLowerCase()));
+            return overlap >= 2 || hasAllowed || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
           };
           const filtered = bestText
             .split(/\n+/g)
@@ -244,8 +249,33 @@ export default async function handler(req, res) {
             .filter(Boolean)
             .filter(keepLine)
             .join('\n');
-          const contextText = (filtered && filtered.length > 120 ? filtered : bestText).slice(0, 1200);
+          const sanitize = (s) => String(s || '')
+            .replace(/https?:\/\/\S+/gi, '')
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+          const filteredLines = (filtered || bestText)
+            .split(/\n+/g)
+            .map((x) => sanitize(x))
+            .filter(Boolean);
+          const topBullets = filteredLines.slice(0, 6);
+          const contextText = topBullets.join('\n');
           const apiKey = process.env.GROQ_API_KEY || '';
+
+          // Se veio via router (tema explícito), usar formato determinístico e evitar LLM
+          const viaRouter = Array.isArray(req.__allowedRouterTerms) && req.__allowedRouterTerms.length > 0;
+          if (viaRouter) {
+            const corpo = [
+              'Agradecemos o seu contato.',
+              '',
+              `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+              '',
+              'Orientação:',
+              ...topBullets.map((b, i) => (b ? `• ${b}` : '')).filter(Boolean),
+              '',
+              'Permanecemos à disposição para qualquer esclarecimento adicional.'
+            ].join('\n');
+            return res.status(200).json({ resposta: corpo });
+          }
           // 4a) Tentativa 1: Gemini (principal)
           try {
             const gkey = (process.env.GEMINI_API_KEY || '').trim();
@@ -342,6 +372,7 @@ export default async function handler(req, res) {
               'Não inclua emojis, gírias ou promessas. Seja claro, objetivo e respeitoso.',
               'Responda EXCLUSIVAMENTE sobre o assunto da pergunta. Não mencione temas não relacionados (ex.: malha fina, e-CAC, pendências) a menos que a pergunta contenha explicitamente essas palavras.',
               'Se algum trecho do contexto trouxer tópicos diferentes, ignore-os e mantenha o foco apenas no tema solicitado.',
+              'Não invente informações fora do contexto. Não inclua URL, domínios ou referências externas. Proibido mencionar: Banco do Brasil, e-CAC, malha fina, recibo, restituição, score, open finance, cartão — a menos que esses termos estejam explícitos na pergunta.',
             ].join('\n');
             const userMsg = [
               `Pergunta do cliente: ${String(pergunta).trim()}`,
