@@ -46,8 +46,22 @@ export default async function handler(req, res) {
           }
         } catch {}
       }
+      const textFileExists = fs.existsSync(absText) || fs.existsSync(absText + '.pdf');
       if (textBase && textBase.trim()) {
-        const sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
+        let sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
+        if (sections.length < 3) {
+          // PDF pode vir com quebras simples; agrupar linhas em blocos
+          const lines = String(textBase).split(/\n+/g).map((l) => l.trim()).filter(Boolean);
+          const grouped = [];
+          let buf = [];
+          for (const line of lines) {
+            buf.push(line);
+            if (buf.join(' ').length > 400) { grouped.push(buf.join('\n')); buf = []; }
+          }
+          if (buf.length) grouped.push(buf.join('\n'));
+          if (grouped.length) sections = grouped;
+          if (sections.length === 0) sections = [String(textBase)];
+        }
         const qTokens = new Set(tokens(pergunta));
         const qTokArr = Array.from(qTokens);
         const qBi = ngrams(qTokArr, 2);
@@ -120,6 +134,19 @@ export default async function handler(req, res) {
             '',
             'Orientação:',
             bestText,
+            '',
+            'Permanecemos à disposição para qualquer esclarecimento adicional.'
+          ].join('\n');
+          return res.status(200).json({ resposta: respostaFinal });
+        } else if (textFileExists) {
+          // Forçar uso de base textual quando presente
+          const respostaFinal = [
+            'Agradecemos o seu contato.',
+            '',
+            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+            '',
+            'Orientação:',
+            'No momento não localizamos uma orientação diretamente aplicável na base textual interna. Por favor, refine a descrição ou tente novamente.',
             '',
             'Permanecemos à disposição para qualquer esclarecimento adicional.'
           ].join('\n');
