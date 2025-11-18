@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate && next build --webpack",
+    "build": "prisma generate && next build --webpack && node -e \"require('fs').mkdirSync('.next',{recursive:true});require('fs').writeFileSync('.next/lock','')\"",
     "start": "next start",
     "lint": "eslint"
   },
