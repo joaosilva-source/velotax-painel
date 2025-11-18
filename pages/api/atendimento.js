@@ -170,7 +170,19 @@ export default async function handler(req, res) {
     }).sort((a,b)=>b._score - a._score);
 
     const best = scoredAll[0] || null;
-    const respostaFinal = (best && String(best.resposta || '').trim()) || 'Resposta não encontrada na base.';
+    const raw = (best && String(best.resposta || '').trim()) || '';
+    const respostaFinal = raw
+      ? [
+          'Agradecemos o seu contato.',
+          '',
+          `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+          '',
+          'Orientação:',
+          raw,
+          '',
+          'Permanecemos à disposição para qualquer esclarecimento adicional.'
+        ].join('\n')
+      : 'Agradecemos o seu contato. No momento não localizamos uma orientação diretamente aplicável na base. Por favor, descreva com mais detalhes para encaminharmos a resposta adequada.';
     return res.status(200).json({ resposta: respostaFinal });
     
   } catch (e) {
