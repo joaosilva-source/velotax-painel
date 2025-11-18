@@ -474,6 +474,58 @@ export default async function handler(req, res) {
               }
             }
           } catch {}
+
+          // Caso especial: "Crédito Pessoal" (HTML público) — extrair sentenças curtas de contratação
+          try {
+            const isCreditoPessoal = /credito_pessoal_velotax\.html$/i.test(String(bestDoc.path || ''));
+            if (qIsHowToContract && isCreditoPessoal) {
+              const full = String(textBase || '');
+              // full já está sem tags HTML (stripped acima). Quebrar em sentenças simples
+              const rawSentences = full
+                .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Ý])/g)
+                .map(s => s.replace(/\s{2,}/g,' ').trim())
+                .filter(s => s.length > 0 && s.length <= 280);
+              const rel = rawSentences.filter(s => /(contrata(c|ç)[aã]o|contratar|simula(c|ç)[aã]o|app|aplicativo|proposta|confirmar)/i.test(s));
+              // Deduplicar por normalização simples
+              const seen = new Set();
+              const uniq = [];
+              for (const s of rel) {
+                const k = s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+                if (!seen.has(k)) { seen.add(k); uniq.push(s); }
+              }
+              // Selecionar até 6 bullets
+              let bullets = uniq.slice(0, 6);
+              // Suavizar tom
+              const soften = (t) => {
+                let s = String(t||'').trim();
+                if (s) s = s.charAt(0).toUpperCase() + s.slice(1);
+                s = s.replace(/\bAguarde\b/gi, 'Aguarde um instante, por favor')
+                     .replace(/\s{2,}/g, ' ').trim();
+                if (!/[.!?]$/.test(s)) s += '.';
+                return s;
+              };
+              bullets = bullets.map(soften);
+              // Garantir CTA
+              const cta = 'Acesse o aplicativo Velotax e faça a simulação de crédito na seção "Simulação de Crédito" para concluir a contratação.';
+              if (!bullets.some(l => /simula[cç][aã]o/i.test(l))) {
+                if (bullets.length >= 6) bullets.pop();
+                bullets.push(cta);
+              }
+              const corpo = [
+                'Agradecemos o seu contato.',
+                '',
+                `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+                '',
+                'Orientações objetivas:',
+                ...bullets.map((b,i)=>`${i+1}. ${b}`),
+                '',
+                'Permanecemos à disposição para qualquer esclarecimento adicional.',
+                'Atenciosamente,',
+                'Equipe Velotax.'
+              ].join('\n');
+              return res.status(200).json({ resposta: corpo });
+            }
+          } catch {}
           // Preparar linhas e reponderar por prefer/avoid (sem banir)
           const allowTerms = Array.isArray(req.__allowedRouterTerms) ? req.__allowedRouterTerms : [];
           const rawLines = bestText.split(/\n+/g).map((s) => s.trim()).filter(Boolean);
