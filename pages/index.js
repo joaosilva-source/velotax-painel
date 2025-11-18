@@ -109,7 +109,7 @@ export default function Home() {
 
   useEffect(() => {
     const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
-    const base = selectedAgent ? arr.filter((r) => String(r?.agente||'') === selectedAgent) : arr;
+    const base = selectedAgent ? arr.filter((r) => norm(r?.agente||'') === norm(selectedAgent)) : arr;
     const todayStr = new Date().toDateString();
     const today = base.filter((r) => new Date(r?.createdAt || 0).toDateString() === todayStr).length;
     const done = base.filter((r) => String(r?.status || '').toLowerCase() === 'feito').length;
@@ -167,7 +167,7 @@ export default function Home() {
         if (!res.ok) throw new Error('fail');
         const list = await res.json();
         const arr = Array.isArray(list) ? list : [];
-        const filtered = arr.filter((r) => String(r?.agente||'') === selectedAgent)
+        const filtered = arr.filter((r) => norm(r?.agente||'') === norm(selectedAgent))
           .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
         setAgentHistory(filtered);
       } catch {
@@ -176,7 +176,7 @@ export default function Home() {
       setAgentHistoryLoading(false);
     };
     load();
-    setAgentHistoryLimit(50);
+    setAgentHistoryLimit(100);
   }, [selectedAgent]);
 
   const buscarCpf = async () => {
@@ -232,7 +232,22 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="hidden md:flex items-end gap-2">
+                    <div className="text-xs text-black/60">Meu nome de agente</div>
+                    <input
+                      value={selectedAgent}
+                      onChange={(e)=>{
+                        const v = e.target.value;
+                        setSelectedAgent(v);
+                        setMyAgent(v);
+                        try { localStorage.setItem('velotax_agent', v); } catch {}
+                      }}
+                      placeholder="Ex.: Vanessa"
+                      className="border rounded px-2 py-1 text-xs"
+                      style={{minWidth:140}}
+                    />
+                  </div>
                   <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90 inline-flex items-center gap-2 transition-all duration-200">
                     {statsLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Atualizando…</>) : 'Atualizar agora'}
                   </button>

@@ -12,6 +12,41 @@ export default function Atendimento() {
   const [fbSending, setFbSending] = useState(false);
   // UI automática: sem campos extras
 
+  const renderResposta = (txt='') => {
+    const lines = String(txt).split(/\n/);
+    const blocks = [];
+    let curList = [];
+    const flushList = () => {
+      if (curList.length) {
+        blocks.push({ type: 'ol', items: curList.slice() });
+        curList = [];
+      }
+    };
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { flushList(); continue; }
+      const m = line.match(/^(\d+)\.\s+(.*)$/);
+      if (m) {
+        curList.push(m[2]);
+      } else {
+        flushList();
+        blocks.push({ type: 'p', text: line });
+      }
+    }
+    flushList();
+    return (
+      <div className="text-sm leading-6">
+        {blocks.map((b, i) => b.type === 'p' ? (
+          <p key={i} className="mb-2 whitespace-pre-wrap">{b.text}</p>
+        ) : (
+          <ol key={i} className="list-decimal ml-5 space-y-1">
+            {b.items.map((it, j) => (<li key={j}>{it}</li>))}
+          </ol>
+        ))}
+      </div>
+    );
+  };
+
   const processar = async () => {
     setErro('');
     setResposta('');
@@ -71,8 +106,8 @@ export default function Atendimento() {
               <div className="text-black/60 text-sm">Aguardando processamento…</div>
             )}
             {resposta && (
-              <div className="bg-white/80 border border-black/10 rounded-xl p-4 whitespace-pre-wrap text-sm">
-                {resposta}
+              <div className="bg-white/80 border border-black/10 rounded-xl p-4">
+                {renderResposta(resposta)}
               </div>
             )}
             {resposta && (
