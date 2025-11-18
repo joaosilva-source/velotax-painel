@@ -26,10 +26,32 @@ export default async function handler(req, res) {
       for (let i = 0; i <= arr.length - n; i++) out.push(arr.slice(i, i + n).join(' '));
       return out;
     };
-    const bannedTerms = [
-      'malha', 'e-cac', 'e cac', 'pendenc', 'restitu', 'open finance', 'score', 'cartao', 'cartão',
-      'banco do brasil', 'bb.com.br', 'recibo', 'declar'
-    ];
+    // Preferências aprendidas por feedback (sem banir termos): prefer/avoid
+    let preferTerms = [];
+    let avoidTerms = [];
+    try {
+      const fbFile = path.join(process.cwd(), 'data', 'feedback.json');
+      if (fs.existsSync(fbFile)) {
+        const arr = JSON.parse(fs.readFileSync(fbFile, 'utf8') || '[]');
+        if (Array.isArray(arr)) {
+          const pref = new Set();
+          const av = new Set();
+          for (const it of arr) {
+            const t = String(it?.type || '').toLowerCase();
+            const desc = String(it?.descricao || '');
+            const toks = normalize(desc).split(' ').filter(Boolean);
+            if (t === 'positivo' || t === 'positive' || t === 'bom' || t === 'good') {
+              for (const tk of toks) if (tk.length > 2) pref.add(tk);
+            }
+            if (t === 'negativo' || t === 'negative' || t === 'ruim' || t === 'bad') {
+              for (const tk of toks) if (tk.length > 2) av.add(tk);
+            }
+          }
+          preferTerms = Array.from(pref);
+          avoidTerms = Array.from(av);
+        }
+      }
+    } catch {}
 
     // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH) ou melhor documento em data/ e public/data
     try {
@@ -80,7 +102,121 @@ export default async function handler(req, res) {
               candidatePaths.length = 0;
               candidatePaths.push(abs1);
               // guardar termos permitidos do router
-              req.__allowedRouterTerms = (bestRoute.allowed || []).map((s) => String(s || '')).filter(Boolean);
+              let allowed = (bestRoute.allowed || []).map((s) => String(s || '')).filter(Boolean);
+              //  Enriquecer allowed com palavras-chave do CSV (data/faq.csv)
+              try {
+                const csvPath = path.join(process.cwd(), 'data', 'faq.csv');
+                if (fs.existsSync(csvPath)) {
+                  const rawCsv = fs.readFileSync(csvPath, 'utf8');
+                  // parse leve
+                  const rows = (() => {
+                    const out = [];
+                    let cur = [], val = '', inQ = false; const t = rawCsv;
+                    for (let i=0;i<t.length;i++) { const ch=t[i], nx=t[i+1];
+                      if (inQ) { if (ch==='"' && nx==='"'){ val+='"'; i++; } else if (ch==='"'){ inQ=false; } else { val+=ch; } }
+                      else { if (ch==='"') inQ=true; else if (ch===','){ cur.push(val); val=''; } else if (ch==='\n'){ cur.push(val); out.push(cur); cur=[]; val=''; } else if (ch==='\r'){ } else { val+=ch; } }
+                    }
+                    if (val.length || cur.length){ cur.push(val); out.push(cur);} return out;
+                  })();
+                  if (rows && rows.length) {
+                    const headers = rows[0].map((h)=>String(h||'').trim());
+                    const dataRows = rows.slice(1);
+                    const idxPerg = headers.findIndex(h=>/pergunta/i.test(h));
+                    const idxTema = headers.findIndex(h=>/(tema|tabula)/i.test(h));
+                    const idxPal = headers.findIndex(h=>/(palavras|keywords)/i.test(h));
+                    const idxSin = headers.findIndex(h=>/(sinonimos|sinônimos|synonyms)/i.test(h));
+                    const routeTokens = new Set(normalize((bestRoute.allowed||[]).join(' ') + ' ' + bestRoute.file).split(' ').filter(Boolean));
+                    const extra = new Set();
+                    for (const r of dataRows) {
+                      const tema = normalize((r[idxTema]||'') + ' ' + (r[idxPerg]||''));
+                      // se o tema/pergunta da linha contém qualquer token do route
+                      let hit = false;
+                      for (const tk of routeTokens){ if (tk && tema.includes(tk)) { hit=true; break; } }
+                      if (!hit) continue;
+                      const pal = String(r[idxPal]||'');
+                      const sin = String(r[idxSin]||'');
+                      const toks = (pal + ' ' + sin).replace(/[;,]/g,' ').split(/\s+/).filter(Boolean);
+                      for (const t of toks) extra.add(t);
+                    }
+                    allowed = [...new Set([...allowed, ...Array.from(extra)])];
+                  }
+                }
+              } catch {}
+              req.__allowedRouterTerms = allowed;
+            }
+          }
+        }
+      } catch {}
+
+      // Auto-router a partir do CSV (se nenhum arquivo foi forçado acima)
+      try {
+        if (candidatePaths.length > 1) {
+          // ainda não forçado para um único arquivo: tentar CSV
+          const csvPath = path.join(process.cwd(), 'data', 'faq.csv');
+          if (fs.existsSync(csvPath)) {
+            const rawCsv = fs.readFileSync(csvPath, 'utf8');
+            const rows = (() => {
+              const out = []; let cur = [], val = '', inQ = false; const t = rawCsv;
+              for (let i=0;i<t.length;i++){const ch=t[i],nx=t[i+1];
+                if(inQ){if(ch==='"'&&nx==='"'){val+='"';i++;}else if(ch==='"'){inQ=false;}else{val+=ch;}}
+                else{if(ch==='"')inQ=true;else if(ch===','){cur.push(val);val='';}else if(ch==='\n'){cur.push(val);out.push(cur);cur=[];val='';}else if(ch==='\r'){}else{val+=ch;}}
+              }
+              if(val.length||cur.length){cur.push(val);out.push(cur);} return out;
+            })();
+            if (rows && rows.length) {
+              const headers = rows[0].map((h)=>String(h||'').trim());
+              const dataRows = rows.slice(1);
+              const idxPerg = headers.findIndex(h=>/pergunta/i.test(h));
+              const idxTema = headers.findIndex(h=>/(tema|tabula)/i.test(h));
+              const idxPal = headers.findIndex(h=>/(palavras|keywords)/i.test(h));
+              const idxSin = headers.findIndex(h=>/(sinonimos|sinônimos|synonyms)/i.test(h));
+
+              // agrupar por tema
+              const groups = new Map();
+              for (const r of dataRows) {
+                const temaRaw = String(r[idxTema]||'').trim() || 'outros';
+                const perguntaTxt = String(r[idxPerg]||'');
+                const pal = String(r[idxPal]||'');
+                const sin = String(r[idxSin]||'');
+                const allKw = (pal+' '+sin).replace(/[;,]/g,' ').split(/\s+/).filter(Boolean);
+                if (!groups.has(temaRaw)) groups.set(temaRaw, { tema: temaRaw, kws: new Set(), perguntas: [] });
+                const g = groups.get(temaRaw);
+                for (const w of allKw) g.kws.add(w);
+                if (perguntaTxt) g.perguntas.push(perguntaTxt);
+              }
+
+              // pontuar tema pelo overlap com a pergunta
+              const qn = normalize(pergunta);
+              const qtk = new Set(qn.split(' ').filter(Boolean));
+              let best = { tema: '', score: -1, kws: new Set() };
+              for (const { tema, kws, perguntas } of groups.values()) {
+                const tn = normalize(tema);
+                let s = 0;
+                for (const t of qtk) if (tn.includes(t)) s += 2;
+                for (const p of perguntas) {
+                  const pn = normalize(p);
+                  for (const t of qtk) if (pn.includes(t)) s += 1;
+                }
+                if (s > best.score) best = { tema, score: s, kws };
+              }
+
+              if (best.tema) {
+                // tentar localizar arquivo correspondente no data/ pelo nome do tema
+                const allData = fs.readdirSync(path.join(process.cwd(),'data')).map(f=>({f,fn:normalize(f)}));
+                const temaNorm = normalize(best.tema).split(' ').filter(Boolean);
+                let chosen = '';
+                for (const {f,fn} of allData) {
+                  if (/[.](md|txt|pdf)$/i.test(f)) {
+                    let hits=0; for (const tk of temaNorm) if (fn.includes(tk)) hits++;
+                    if (hits >= Math.max(1, Math.floor(temaNorm.length/3))) { chosen = path.join(process.cwd(),'data',f); break; }
+                  }
+                }
+                if (chosen && fs.existsSync(chosen)) {
+                  candidatePaths.length = 0;
+                  candidatePaths.push(chosen);
+                  req.__allowedRouterTerms = [...new Set([...(req.__allowedRouterTerms||[]), ...Array.from(best.kws||[]), best.tema])];
+                }
+              }
             }
           }
         }
@@ -231,33 +367,29 @@ export default async function handler(req, res) {
 
         const bestText = scored[0]?.sec || '';
         if (bestText) {
-          // Filtrar linhas do trecho para evitar mistura de temas
+          // Preparar linhas e reponderar por prefer/avoid (sem banir)
           const allowTerms = Array.isArray(req.__allowedRouterTerms) ? req.__allowedRouterTerms : [];
-          const keepLine = (ln) => {
-            const lnTok = new Set(tokens(ln));
-            let overlap = 0;
-            for (const t of qTokens) if (lnTok.has(t)) overlap++;
-            // banir termos que não estejam na pergunta
-            const bannedHit = bannedTerms.some(term => ln.toLowerCase().includes(term)) && !bannedTerms.some(term => qNorm.includes(term));
-            if (bannedHit) return false;
-            const hasAllowed = allowTerms.some((t) => t && ln.toLowerCase().includes(String(t).toLowerCase()));
-            return overlap >= 2 || hasAllowed || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
-          };
-          const filtered = bestText
-            .split(/\n+/g)
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .filter(keepLine)
-            .join('\n');
+          const rawLines = bestText.split(/\n+/g).map((s) => s.trim()).filter(Boolean);
+          const actionRe = /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i;
           const sanitize = (s) => String(s || '')
             .replace(/https?:\/\/\S+/gi, '')
             .replace(/\s{2,}/g, ' ')
             .trim();
-          const filteredLines = (filtered || bestText)
-            .split(/\n+/g)
-            .map((x) => sanitize(x))
-            .filter(Boolean);
-          const topBullets = filteredLines.slice(0, 6);
+          const scoredLines = rawLines.map((ln) => {
+            const clean = sanitize(ln);
+            const lnTok = new Set(tokens(clean));
+            let overlap = 0; for (const t of qTokens) if (lnTok.has(t)) overlap++;
+            let score = overlap; // base
+            if (actionRe.test(clean)) score += 2;
+            const hasAllowed = allowTerms.some((t) => t && clean.toLowerCase().includes(String(t).toLowerCase()));
+            if (hasAllowed) score += 2;
+            const preferHits = preferTerms.filter((t)=> t && clean.includes(t)).length;
+            const avoidHits = avoidTerms.filter((t)=> t && clean.includes(t) && !qNorm.includes(t)).length;
+            score += preferHits * 2;
+            score -= avoidHits * 1.5;
+            return { clean, score };
+          }).filter(x => x.score > 0.25).sort((a,b)=>b.score - a.score);
+          const topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
           const contextText = topBullets.join('\n');
           const apiKey = process.env.GROQ_API_KEY || '';
 
@@ -288,7 +420,7 @@ export default async function handler(req, res) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [
-                    { role: 'user', parts: [ { text: `${contexto}\n\n${userMsg}` } ] }
+                    { role: 'user', parts: [ { text: `${contexto}\n\nConsiderações aprendidas (feedback):\n- Prefira: ${preferTerms.join(', ') || '—'}\n- Evite: ${avoidTerms.join(', ') || '—'}\n\n${userMsg}` } ] }
                   ]
                 }),
                 signal: controller.signal
