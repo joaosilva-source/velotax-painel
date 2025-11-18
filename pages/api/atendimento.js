@@ -357,17 +357,13 @@ export default async function handler(req, res) {
           if (grouped.length) sections = grouped;
           if (sections.length === 0) sections = [String(textBase)];
         }
-        const qTokens = qTokensSet;
-        const qTokArr = Array.from(qTokens);
-        const qBi = ngrams(qTokArr, 2);
-        const qTri = ngrams(qTokArr, 3);
-        // usar qNorm já definido fora deste bloco
+        // qTokensSet, qTokArr, qBi, qTri e qNorm já definidos acima neste bloco
 
         const scored = sections.map((sec) => {
           const secNorm = normalize(sec);
           const secTokens = new Set(tokens(secNorm));
           let s = 0;
-          for (const t of qTokens) if (secTokens.has(t)) s += 3;
+          for (const t of qTokensSet) if (secTokens.has(t)) s += 3;
           for (const b of qBi) if (b && secNorm.includes(b)) s += 5;
           for (const tr of qTri) if (tr && secNorm.includes(tr)) s += 8;
           // pequeno bônus se contém frase completa de consulta
@@ -388,7 +384,7 @@ export default async function handler(req, res) {
           const scoredLines = rawLines.map((ln) => {
             const clean = sanitize(ln);
             const lnTok = new Set(tokens(clean));
-            let overlap = 0; for (const t of qTokens) if (lnTok.has(t)) overlap++;
+            let overlap = 0; for (const t of qTokensSet) if (lnTok.has(t)) overlap++;
             let score = overlap; // base
             if (actionRe.test(clean)) score += 2;
             const hasAllowed = allowTerms.some((t) => t && clean.toLowerCase().includes(String(t).toLowerCase()));
@@ -406,7 +402,7 @@ export default async function handler(req, res) {
             const s = x.clean.toLowerCase();
             if (/voc[eê]\s+solicitou|sobre\s+a\s+sua?\s+solicita[cç][aã]o|em\s+sua?\s+solicita[cç][aã]o/.test(s)) return false;
             const common = new Set();
-            for (const t of qTokens) if (s.includes(t)) common.add(t);
+            for (const t of qTokensSet) if (s.includes(t)) common.add(t);
             return common.size < Math.max(3, Math.ceil(qTokens.size * 0.5));
           })
           .sort((a,b)=>b.score - a.score);
@@ -625,21 +621,6 @@ export default async function handler(req, res) {
             ].join('\n');
             return res.status(200).json({ resposta: corpo });
           } catch {}
-if (textFileExists) {
-          try { console.log('[ATENDIMENTO] base textual presente, nenhum trecho casou.'); } catch {}
-          // Forçar uso de base textual quando presente
-          const respostaFinal = [
-            'Agradecemos o seu contato.',
-            '',
-            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
-            '',
-            'Orientação:',
-            'No momento não localizamos uma orientação diretamente aplicável na base textual interna. Por favor, refine a descrição ou tente novamente.',
-            '',
-            'Permanecemos à disposição para qualquer esclarecimento adicional.'
-          ].join('\n');
-          return res.status(200).json({ resposta: respostaFinal });
-        }
       }
     } catch {}
 
@@ -772,28 +753,28 @@ if (textFileExists) {
       };
     }).filter((x) => (x.pergunta || x.resposta));
 
-    // 3) Escolher a melhor resposta diretamente da planilha
-    const qNorm = normalize(pergunta);
-    const qTokens = new Set(tokens(pergunta));
-    const qTokArr = Array.from(qTokens);
-    const qBi = ngrams(qTokArr, 2);
-    const qTri = ngrams(qTokArr, 3);
+    // 3) Escolher a melhor resposta diretamente da planilha (variáveis específicas do bloco CSV)
+    const qNormCsv = normalize(pergunta);
+    const qTokensCsv = new Set(tokens(pergunta));
+    const qTokArrCsv = Array.from(qTokensCsv);
+    const qBiCsv = ngrams(qTokArrCsv, 2);
+    const qTriCsv = ngrams(qTokArrCsv, 3);
 
     const scoredAll = base.map((r) => {
       let s = 0;
       // Similaridade com a coluna Pergunta
       const exPergNorm = normalize(r.pergunta);
       const exPergTokens = new Set(tokens(exPergNorm));
-      for (const t of qTokens) if (exPergTokens.has(t)) s += 3;
-      for (const b of qBi) if (b && exPergNorm.includes(b)) s += 5;
-      for (const tr of qTri) if (tr && exPergNorm.includes(tr)) s += 8;
+      for (const t of qTokensCsv) if (exPergTokens.has(t)) s += 3;
+      for (const b of qBiCsv) if (b && exPergNorm.includes(b)) s += 5;
+      for (const tr of qTriCsv) if (tr && exPergNorm.includes(tr)) s += 8;
       // Boost por palavras-chave/sinônimos
       for (const kw of r.kws) {
         if (!kw) continue;
-        if (qTokens.has(kw)) s += 2; else if (qNorm.includes(kw)) s += 1;
+        if (qTokensCsv.has(kw)) s += 2; else if (qNormCsv.includes(kw)) s += 1;
       }
       // Pequeno boost por nome do tema presente
-      if (r.temaKey && qNorm.includes(r.temaKey)) s += 2;
+      if (r.temaKey && qNormCsv.includes(r.temaKey)) s += 2;
       return { ...r, _score: s };
     }).sort((a,b)=>b._score - a._score);
 
