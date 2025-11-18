@@ -26,66 +26,143 @@ export default async function handler(req, res) {
       for (let i = 0; i <= arr.length - n; i++) out.push(arr.slice(i, i + n).join(' '));
       return out;
     };
+    const bannedTerms = [
+      'malha', 'e-cac', 'e cac', 'pendenc', 'restitu', 'open finance', 'score', 'cartao', 'cartão'
+    ];
 
-    // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH ou data/document 1 / document 1.pdf)
+    // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH) ou melhor documento em data/ e public/data
     try {
-      const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : 'data/document 1.pdf';
-      const absText = path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath);
-      let textBase = '';
-      // 0a) tentar TXT puro
-      try { textBase = fs.readFileSync(absText, 'utf8'); } catch {}
-      // 0b) se TXT não existir, tentar PDF (mesmo caminho com .pdf ou caminho já com .pdf)
-      if (!textBase || !textBase.trim()) {
+      const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : '';
+      const absConfigured = textPath ? (path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath)) : '';
+      const candidatePaths = [];
+      // Prefer configured path if provided
+      if (absConfigured) candidatePaths.push(absConfigured);
+      // Collect from data/ and public/data
+      const addIfExists = (p) => { try { if (fs.existsSync(p)) candidatePaths.push(p); } catch {} };
+      const scanDir = (dir) => {
         try {
-          const pdfPath = absText.endsWith('.pdf') ? absText : `${absText}.pdf`;
-          if (fs.existsSync(pdfPath)) {
-            const pdfParse = (await import('pdf-parse')).default;
-            const buf = fs.readFileSync(pdfPath);
-            const pdfData = await pdfParse(buf);
-            textBase = String(pdfData?.text || '');
+          const full = path.join(process.cwd(), dir);
+          const items = fs.readdirSync(full);
+          for (const it of items) {
+            const p = path.join(full, it);
+            if (/[.](txt|pdf|md|markdown|html|htm|csv)$/i.test(it)) addIfExists(p);
           }
         } catch {}
-      }
-      // 0b2) tentar PDF em public/data/document 1.pdf
-      if (!textBase || !textBase.trim()) {
+      };
+      scanDir('data');
+      scanDir(path.join('public','data'));
+
+      // Helper: read text from a candidate path (txt or pdf)
+      const readCandidateText = async (p) => {
         try {
-          const publicPdf = path.join(process.cwd(), 'public', 'data', 'document 1.pdf');
-          if (fs.existsSync(publicPdf)) {
+          if (/\.pdf$/i.test(p)) {
             const pdfParse = (await import('pdf-parse')).default;
-            const buf = fs.readFileSync(publicPdf);
+            const buf = fs.readFileSync(p);
             const pdfData = await pdfParse(buf);
-            textBase = String(pdfData?.text || '');
+            return String(pdfData?.text || '');
           }
-        } catch {}
-      }
-      // 0c) em ambientes serverless, tentar baixar do caminho público
-      if ((!textBase || !textBase.trim())) {
+          return fs.readFileSync(p, 'utf8');
+        } catch { return ''; }
+      };
+
+      // If no local files, try public URLs for default names
+      if (!candidatePaths.length) {
         try {
           const proto = (req.headers['x-forwarded-proto'] || 'https');
           const host = req.headers.host;
           if (host) {
             const baseUrl = `${proto}://${host}`;
-            // tentar TXT público
-            const rTxt = await fetch(`${baseUrl}/data/document%201`);
-            if (rTxt.ok) {
-              const t = await rTxt.text();
-              if (t && t.trim()) textBase = t;
-            }
-            if (!textBase || !textBase.trim()) {
-              const rPdf = await fetch(`${baseUrl}/data/document%201.pdf`);
-              if (rPdf.ok) {
-                const ab = await rPdf.arrayBuffer();
-                const pdfParse = (await import('pdf-parse')).default;
-                const pdfData = await pdfParse(Buffer.from(ab));
-                textBase = String(pdfData?.text || '');
-              }
-            }
+            const tryFetch = async (u, pdf=false) => {
+              try {
+                const r = await fetch(u);
+                if (!r.ok) return '';
+                if (pdf) {
+                  const ab = await r.arrayBuffer();
+                  const pdfParse = (await import('pdf-parse')).default;
+                  const pdfData = await pdfParse(Buffer.from(ab));
+                  return String(pdfData?.text || '');
+                } else {
+                  return await r.text();
+                }
+              } catch { return ''; }
+            };
+            // push pseudo-path tokens with content in map
+            const urlTxt = await tryFetch(`${baseUrl}/data/document%201`);
+            const urlPdf = await tryFetch(`${baseUrl}/data/document%201.pdf`, true);
+            // place into arrays as synthetic entries
+            if (urlTxt) candidatePaths.push('URL_TXT::/data/document%201');
+            if (urlPdf) candidatePaths.push('URL_PDF::/data/document%201.pdf');
           }
         } catch {}
       }
-      const textFileExists = fs.existsSync(absText) || fs.existsSync(absText + '.pdf');
+
+      // Load and select best document by max section score
+      const qTokensSet = new Set(tokens(pergunta));
+      const qTokArr = Array.from(qTokensSet);
+      const qBi = ngrams(qTokArr, 2);
+      const qTri = ngrams(qTokArr, 3);
+      const qNorm = normalize(pergunta);
+
+      let bestDoc = { path: '', text: '', score: -1 };
+      for (const p of candidatePaths) {
+        let txt = '';
+        if (p.startsWith('URL_')) {
+          // Already fetched above; re-fetch quickly for simplicity
+          try {
+            const proto = (req.headers['x-forwarded-proto'] || 'https');
+            const host = req.headers.host;
+            if (host) {
+              const baseUrl = `${proto}://${host}`;
+              if (p.startsWith('URL_TXT::')) {
+                const r = await fetch(`${baseUrl}${p.replace('URL_TXT::','')}`);
+                if (r.ok) txt = await r.text();
+              } else if (p.startsWith('URL_PDF::')) {
+                const r = await fetch(`${baseUrl}${p.replace('URL_PDF::','')}`);
+                if (r.ok) {
+                  const ab = await r.arrayBuffer();
+                  const pdfParse = (await import('pdf-parse')).default;
+                  const pdfData = await pdfParse(Buffer.from(ab));
+                  txt = String(pdfData?.text || '');
+                }
+              }
+            }
+          } catch {}
+        } else {
+          txt = await readCandidateText(p);
+        }
+        if (!txt || !txt.trim()) continue;
+        let sections = String(txt).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
+        if (sections.length < 3) {
+          const lines = String(txt).split(/\n+/g).map((l) => l.trim()).filter(Boolean);
+          const grouped = [];
+          let buf = [];
+          for (const line of lines) {
+            buf.push(line);
+            if (buf.join(' ').length > 400) { grouped.push(buf.join('\n')); buf = []; }
+          }
+          if (buf.length) grouped.push(buf.join('\n'));
+          if (grouped.length) sections = grouped;
+          if (sections.length === 0) sections = [String(txt)];
+        }
+        let maxScore = 0;
+        for (const sec of sections) {
+          const secNorm = normalize(sec);
+          const secTokens = new Set(tokens(secNorm));
+          let s = 0;
+          for (const t of qTokensSet) if (secTokens.has(t)) s += 3;
+          for (const b of qBi) if (b && secNorm.includes(b)) s += 5;
+          for (const tr of qTri) if (tr && secNorm.includes(tr)) s += 8;
+          if (qNorm && secNorm.includes(qNorm)) s += 2;
+          if (s > maxScore) maxScore = s;
+        }
+        if (maxScore > bestDoc.score) bestDoc = { path: p, text: txt, score: maxScore };
+      }
+
+      // Use best document if any
+      let textBase = bestDoc.text;
+      const textFileExists = !!textBase;
       if (textBase && textBase.trim()) {
-        try { console.log('[ATENDIMENTO] usando base textual:', absText); } catch {}
+        try { console.log('[ATENDIMENTO] usando documento:', bestDoc.path); } catch {}
         let sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
         if (sections.length < 3) {
           // PDF pode vir com quebras simples; agrupar linhas em blocos
@@ -100,11 +177,11 @@ export default async function handler(req, res) {
           if (grouped.length) sections = grouped;
           if (sections.length === 0) sections = [String(textBase)];
         }
-        const qTokens = new Set(tokens(pergunta));
+        const qTokens = qTokensSet;
         const qTokArr = Array.from(qTokens);
         const qBi = ngrams(qTokArr, 2);
         const qTri = ngrams(qTokArr, 3);
-        const qNorm = normalize(pergunta);
+        const qNorm = qNorm;
 
         const scored = sections.map((sec) => {
           const secNorm = normalize(sec);
@@ -125,7 +202,10 @@ export default async function handler(req, res) {
             const lnTok = new Set(tokens(ln));
             let overlap = 0;
             for (const t of qTokens) if (lnTok.has(t)) overlap++;
-            return overlap >= 1 || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
+            // banir termos que não estejam na pergunta
+            const bannedHit = bannedTerms.some(term => ln.toLowerCase().includes(term)) && !bannedTerms.some(term => qNorm.includes(term));
+            if (bannedHit) return false;
+            return overlap >= 2 || /\b(passos?|orienta(c|ç)[aã]o|procedimento|contrata(c|ç)[aã]o|simula(c|ç)[aã]o|app|aplicativo|prazo|car[êe]ncia|cobran(c|ç)a|pagamento|pix|quitar?)\b/i.test(ln);
           };
           const filtered = bestText
             .split(/\n+/g)
@@ -133,9 +213,37 @@ export default async function handler(req, res) {
             .filter(Boolean)
             .filter(keepLine)
             .join('\n');
-          const contextText = (filtered && filtered.length > 120 ? filtered : bestText).slice(0, 1600);
+          const contextText = (filtered && filtered.length > 120 ? filtered : bestText).slice(0, 1200);
           const apiKey = process.env.GROQ_API_KEY || '';
-          // 4a) Tentativa 1: LLM local (Ollama)
+          // 4a) Tentativa 1: Gemini (principal)
+          try {
+            const gkey = (process.env.GEMINI_API_KEY || '').trim();
+            if (gkey) {
+              const gmodel = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
+              const controller = new AbortController();
+              const t = setTimeout(() => controller.abort(), 8000);
+              const gResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gmodel)}:generateContent?key=${encodeURIComponent(gkey)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    { role: 'user', parts: [ { text: `${contexto}\n\n${userMsg}` } ] }
+                  ]
+                }),
+                signal: controller.signal
+              });
+              clearTimeout(t);
+              if (gResp.ok) {
+                const j = await gResp.json();
+                const llm = j?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (llm && llm.trim()) {
+                  return res.status(200).json({ resposta: llm });
+                }
+              }
+            }
+          } catch {}
+
+          // 4b) Tentativa 2: LLM local (Ollama)
           try {
             const ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
             const ollamaModel = process.env.OLLAMA_MODEL || 'llama3.1:8b';
@@ -165,7 +273,7 @@ export default async function handler(req, res) {
             }
           } catch {}
 
-          // 4a.2) Tentativa 2: LLM local OpenAI-compatible (vLLM), se configurado
+          // 4b.2) Tentativa 3: LLM local OpenAI-compatible (vLLM), se configurado
           try {
             const localUrl = (process.env.LOCAL_LLM_URL || '').trim();
             if (localUrl) {
@@ -188,34 +296,6 @@ export default async function handler(req, res) {
               if (resp.ok) {
                 const j = await resp.json();
                 const llm = j?.choices?.[0]?.message?.content || '';
-                if (llm && llm.trim()) {
-                  return res.status(200).json({ resposta: llm });
-                }
-              }
-            }
-          } catch {}
-
-          // 4b) Tentativa 3: Gemini (Google)
-          try {
-            const gkey = (process.env.GEMINI_API_KEY || '').trim();
-            if (gkey) {
-              const gmodel = (process.env.GEMINI_MODEL || 'gemini-1.5-flash').trim();
-              const controller = new AbortController();
-              const t = setTimeout(() => controller.abort(), 8000);
-              const gResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(gmodel)}:generateContent?key=${encodeURIComponent(gkey)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [
-                    { role: 'user', parts: [ { text: `${contexto}\n\n${userMsg}` } ] }
-                  ]
-                }),
-                signal: controller.signal
-              });
-              clearTimeout(t);
-              if (gResp.ok) {
-                const j = await gResp.json();
-                const llm = j?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                 if (llm && llm.trim()) {
                   return res.status(200).json({ resposta: llm });
                 }
