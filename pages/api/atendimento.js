@@ -63,6 +63,9 @@ export default async function handler(req, res) {
       }
     } catch {}
 
+    // Guardas: nunca usar LLM; ignorar envs que poderiam acionar provedores externos
+    const NEVER_USE_LLM = true;
+
     // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH) ou melhor documento em data/ e public/data
     try {
       const qHasFGTS = /fgts/i.test(String(pergunta||''));
@@ -601,6 +604,18 @@ export default async function handler(req, res) {
           }
           const contextText = topBullets.join('\n');
           // Responder de forma determinística e 100% baseada no contexto extraído
+          const appendLog = () => {
+            try {
+              const logPath = path.join(process.cwd(), 'data', 'atendimento_logs.json');
+              let arr = [];
+              try { if (fs.existsSync(logPath)) arr = JSON.parse(fs.readFileSync(logPath, 'utf8')||'[]'); } catch {}
+              const item = { at: Date.now(), pergunta: String(pergunta||''), resposta: '', fonte: String(bestDoc.path||''), tipo: 'documento' };
+              try { item.resposta = corpo; } catch {}
+              arr.unshift(item);
+              arr = arr.slice(0, 1000);
+              fs.writeFileSync(logPath, JSON.stringify(arr, null, 2));
+            } catch {}
+          };
           const corpo = [
             'Agradecemos o seu contato.',
             '',
@@ -613,6 +628,7 @@ export default async function handler(req, res) {
             'Atenciosamente,',
             'Equipe Velotax.'
           ].join('\n');
+          try { appendLog(); } catch {}
           return res.status(200).json({ resposta: corpo });
         }
       }
@@ -799,6 +815,15 @@ export default async function handler(req, res) {
           ].join('\n');
         })()
       : 'Agradecemos o seu contato. No momento não localizamos uma orientação diretamente aplicável na base. Por favor, descreva com mais detalhes para encaminharmos a resposta adequada.';
+    try {
+      const logPath = path.join(process.cwd(), 'data', 'atendimento_logs.json');
+      let arr = [];
+      try { if (fs.existsSync(logPath)) arr = JSON.parse(fs.readFileSync(logPath, 'utf8')||'[]'); } catch {}
+      const fonte = raw ? 'csv' : (bestDoc && bestDoc.path ? String(bestDoc.path) : 'csv');
+      arr.unshift({ at: Date.now(), pergunta: String(pergunta||''), resposta: respostaFinal, fonte, tipo: raw ? 'csv' : 'csv' });
+      arr = arr.slice(0, 1000);
+      fs.writeFileSync(logPath, JSON.stringify(arr, null, 2));
+    } catch {}
     return res.status(200).json({ resposta: respostaFinal });
     
   } catch (e) {
