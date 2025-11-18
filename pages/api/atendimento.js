@@ -12,6 +12,111 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Pergunta obrigatória.' });
     }
 
+    // Helpers de normalização e tokenização (compartilhados)
+    const normalize = (s) => String(s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}+/gu, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const tokens = (s) => normalize(s).split(' ').filter(Boolean);
+    const ngrams = (arr, n) => {
+      const out = [];
+      for (let i = 0; i <= arr.length - n; i++) out.push(arr.slice(i, i + n).join(' '));
+      return out;
+    };
+
+    // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH ou data/document 1)
+    try {
+      const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : 'data/document 1';
+      const absText = path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath);
+      let textBase = '';
+      try {
+        textBase = fs.readFileSync(absText, 'utf8');
+      } catch {}
+      if (textBase && textBase.trim()) {
+        const sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
+        const qTokens = new Set(tokens(pergunta));
+        const qTokArr = Array.from(qTokens);
+        const qBi = ngrams(qTokArr, 2);
+        const qTri = ngrams(qTokArr, 3);
+        const qNorm = normalize(pergunta);
+
+        const scored = sections.map((sec) => {
+          const secNorm = normalize(sec);
+          const secTokens = new Set(tokens(secNorm));
+          let s = 0;
+          for (const t of qTokens) if (secTokens.has(t)) s += 3;
+          for (const b of qBi) if (b && secNorm.includes(b)) s += 5;
+          for (const tr of qTri) if (tr && secNorm.includes(tr)) s += 8;
+          // pequeno bônus se contém frase completa de consulta
+          if (qNorm && secNorm.includes(qNorm)) s += 2;
+          return { sec, _score: s };
+        }).sort((a,b) => b._score - a._score);
+
+        const bestText = scored[0]?.sec || '';
+        if (bestText) {
+          const apiKey = process.env.GROQ_API_KEY || '';
+          if (apiKey) {
+            const contexto = [
+              'Você é um assistente de atendimento da Velotax. Escreva uma resposta formal, técnica e neutra, em formato de e-mail institucional.',
+              'Use a base textual fornecida como CONTEXTO TÉCNICO (reformule com suas palavras, não copie literalmente).',
+              'Não inclua emojis, gírias ou promessas. Seja claro, objetivo e respeitoso.',
+            ].join('\n');
+            const userMsg = [
+              `Pergunta do cliente: ${String(pergunta).trim()}`,
+              '',
+              'Contexto técnico extraído da base (não copiar, apenas usar como referência):',
+              bestText,
+              '',
+              'Escreva a resposta final como e-mail com:',
+              '- Agradecimento inicial',
+              '- Contextualização breve (o que foi solicitado)',
+              '- Orientação clara e objetiva (com base no contexto, podendo listar passos quando apropriado)',
+              '- Encerramento institucional curto',
+            ].join('\n');
+            try {
+              const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  model: 'llama-3.1-8b-instant',
+                  messages: [
+                    { role: 'system', content: contexto },
+                    { role: 'user', content: userMsg }
+                  ],
+                  temperature: 0.35
+                })
+              });
+              if (groqResp.ok) {
+                const j = await groqResp.json();
+                const llm = j?.choices?.[0]?.message?.content || '';
+                if (llm.trim()) {
+                  return res.status(200).json({ resposta: llm });
+                }
+              }
+            } catch {}
+          }
+          // Fallback de template
+          const respostaFinal = [
+            'Agradecemos o seu contato.',
+            '',
+            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+            '',
+            'Orientação:',
+            bestText,
+            '',
+            'Permanecemos à disposição para qualquer esclarecimento adicional.'
+          ].join('\n');
+          return res.status(200).json({ resposta: respostaFinal });
+        }
+      }
+    } catch {}
+
     // 1) Fonte de dados: prioriza CSV local (DATA_CSV_PATH). Se não houver, usa Google Sheets (gid=0 ou lista informada)
     let csvTexts = [];
     const localPath = process.env.DATA_CSV_PATH ? String(process.env.DATA_CSV_PATH) : 'data/faq.csv';
@@ -113,20 +218,7 @@ export default async function handler(req, res) {
     const idxSinonimos = headers.findIndex(h => /(sinonimos|sinônimos|synonyms)/i.test(h));
     const idxTema = headers.findIndex(h => /(tema|assunto|tópico|topico|categoria)/i.test(h));
 
-    // Helpers de normalização e tokenização
-    const normalize = (s) => String(s || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}+/gu, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const tokens = (s) => normalize(s).split(' ').filter(Boolean);
-    const ngrams = (arr, n) => {
-      const out = [];
-      for (let i = 0; i <= arr.length - n; i++) out.push(arr.slice(i, i + n).join(' '));
-      return out;
-    };
+    // Helpers já definidos acima: normalize, tokens, ngrams
 
     // 2) Construir índice de linhas com tema, palavras e sinônimos
     const base = dataRows.map((r) => {
