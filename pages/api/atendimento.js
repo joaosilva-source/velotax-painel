@@ -65,6 +65,9 @@ export default async function handler(req, res) {
 
     // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH) ou melhor documento em data/ e public/data
     try {
+      const qHasFGTS = /fgts/i.test(String(pergunta||''));
+      const qIsHowToContract = /\b(contratar|como\s+contratar|simula[cç][aã]o)\b/i.test(String(pergunta||''));
+      if (qIsHowToContract) enforceCTAAppSim = true;
       const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : '';
       const absConfigured = textPath ? (path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath)) : '';
       const candidatePaths = [];
@@ -387,12 +390,16 @@ export default async function handler(req, res) {
             let overlap = 0; for (const t of qTokensSet) if (lnTok.has(t)) overlap++;
             let score = overlap; // base
             if (actionRe.test(clean)) score += 2;
+            // bônus por intenção de contratação
+            if (qIsHowToContract && /(contrata(c|ç)[aã]o|contratar|simula(c|ç)[aã]o|app|aplicativo)/i.test(clean)) score += 2;
             const hasAllowed = allowTerms.some((t) => t && clean.toLowerCase().includes(String(t).toLowerCase()));
             if (hasAllowed) score += 2;
             const preferHits = preferTerms.filter((t)=> t && clean.includes(t)).length;
             const avoidHits = avoidTerms.filter((t)=> t && clean.includes(t) && !qNorm.includes(t)).length;
             score += preferHits * 2;
             score -= avoidHits * 1.5;
+            // penalizar menções a FGTS quando a pergunta não cita FGTS
+            if (!qHasFGTS && /\bfgts\b/i.test(clean)) score -= 2.5;
             return { clean, score };
           })
           .filter(x => x.score > 0.25)
@@ -590,53 +597,7 @@ export default async function handler(req, res) {
     const best = scoredAll[0] || null;
     const raw = (best && String(best.resposta || '').trim()) || '';
 
-    // 4) Se houver GROQ_API_KEY, reescrever a resposta como e-mail contextualizado (sem colar literal)
-    const apiKey = process.env.GROQ_API_KEY || '';
-    if (apiKey && raw) {
-      const contexto = [
-        'Você é um assistente de atendimento da Velotax. Escreva uma resposta formal, técnica e neutra, em formato de e-mail institucional.',
-        'Use a orientação da base como CONTEXTO TÉCNICO (reformule com suas palavras, não copie literalmente).',
-        'Não inclua emojis, gírias ou promessas. Seja claro, objetivo e respeitoso.',
-      ].join('\n');
-      const userMsg = [
-        `Pergunta do cliente: ${String(pergunta).trim()}`,
-        '',
-        'Contexto técnico extraído da base (não copiar, apenas usar como referência):',
-        raw,
-        '',
-        'Escreva a resposta final como e-mail com:',
-        '- Agradecimento inicial',
-        '- Contextualização breve (o que foi solicitado)',
-        '- Orientação clara e objetiva (com base no contexto)',
-        '- Encerramento institucional curto',
-      ].join('\n');
-      try {
-        const groqResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: 'llama-3.1-8b-instant',
-            messages: [
-              { role: 'system', content: contexto },
-              { role: 'user', content: userMsg }
-            ],
-            temperature: 0.4
-          })
-        });
-        if (groqResp.ok) {
-          const j = await groqResp.json();
-          const llm = j?.choices?.[0]?.message?.content || '';
-          if (llm.trim()) {
-            return res.status(200).json({ resposta: llm });
-          }
-        }
-      } catch {}
-    }
-
-    // 4b) Fallback: modelo indisponível — formatar resposta com template institucional
+    // Resposta 100% determinística com base no CSV (sem LLM)
     const respostaFinal = raw
       ? [
           'Agradecemos o seu contato.',
