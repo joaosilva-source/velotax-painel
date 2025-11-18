@@ -1,7 +1,22 @@
 {
   "credito_trabalhador": {
     "file": "data/Crédito do Trabalhador.md",
-    "keywords": ["credito trabalhador", "crédito trabalhador", "credito do trabalhador", "contratar", "carencia", "carência", "carencia de pagamento", "primeira cobranca", "primeira cobrança", "carencia 60", "carencia 90"]
+    "keywords": [
+      "credito trabalhador",
+      "crédito trabalhador",
+      "credito do trabalhador",
+      "contratar",
+      "como contratar",
+      "simulação",
+      "app",
+      "carencia",
+      "carência",
+      "carencia de pagamento",
+      "primeira cobranca",
+      "primeira cobrança",
+      "carencia 60",
+      "carencia 90"
+    ]
   },
   "antecipacao_restituicao": {
     "file": "data/antecipação_da_restituição.md",
@@ -9,27 +24,35 @@
   },
   "conta_pix": {
     "file": "data/Conta e Chaves PIX.md",
-    "keywords": ["pix", "chave pix", "trocar chave", "alterar chave", "conta", "conta pix"]
+    "keywords": ["pix", "chave pix", "trocar chave", "alterar chave", "conta", "conta pix", "cadastrar chave", "remover chave"]
   },
   "cadastro_app": {
     "file": "data/Cadastro e Aplicativo.md",
-    "keywords": ["cadastro", "aplicativo", "app", "login", "acesso", "cadastro app"]
+    "keywords": ["cadastro", "aplicativo", "app", "login", "acesso", "cadastro app", "criar conta", "recuperar senha"]
   },
   "irpf": {
     "file": "data/IRPF e Declaração.md",
-    "keywords": ["irpf", "declaracao", "declaração", "malha", "e-cac", "ecac", "pendencia", "pendência"]
+    "keywords": ["irpf", "declaracao", "declaração", "malha", "e-cac", "ecac", "pendencia", "pendência", "restituição", "cota"]
   },
   "invest_score": {
     "file": "data/Investimentos e Score.md",
-    "keywords": ["score", "investimento", "open finance"]
+    "keywords": ["score", "investimento", "open finance", "consulta score", "aumentar score"]
   },
   "seguros": {
     "file": "data/Seguros.md",
-    "keywords": ["seguro", "seguros"]
+    "keywords": ["seguro", "seguros", "apólice", "sinistro"]
   },
   "credito_pessoal": {
-    "file": "data/outros.md",
-    "keywords": ["credito pessoal", "crédito pessoal", "contratar credito pessoal", "simulacao credito pessoal", "como contratar credito pessoal"]
+    "file": "public/credito_pessoal_velotax.html",
+    "keywords": [
+      "credito pessoal",
+      "crédito pessoal",
+      "contratar",
+      "como contratar",
+      "simulação",
+      "app",
+      "proposta"
+    ]
   },
   "outros": {
     "file": "data/outros.md",

@@ -244,7 +244,17 @@ export default async function handler(req, res) {
             const pdfData = await pdfParse(buf);
             return String(pdfData?.text || '');
           }
-          return fs.readFileSync(p, 'utf8');
+          let raw = fs.readFileSync(p, 'utf8');
+          if (/\.(html?|HTML?)$/i.test(p)) {
+            // remover tags HTML básicas para scoring
+            raw = String(raw).replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                             .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                             .replace(/<[^>]+>/g, ' ')
+                             .replace(/&nbsp;/g, ' ')
+                             .replace(/&amp;/g, '&')
+                             .replace(/\s{2,}/g, ' ');
+          }
+          return raw;
         } catch { return ''; }
       };
 
@@ -517,6 +527,20 @@ export default async function handler(req, res) {
           } else {
             topBullets = scoredLines.slice(0, 6).map(x=>x.clean);
           }
+          // suavizar tom sem alterar conteúdo factual
+          const soften = (s) => {
+            let t = String(s||'').trim();
+            // capitalização suave
+            if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+            // toques gentis comuns
+            t = t.replace(/\bAguarde\b/gi, 'Aguarde um instante, por favor')
+                 .replace(/\bPor favor\b/gi, 'por favor')
+                 .replace(/\s{2,}/g, ' ').trim();
+            // pontuação final
+            if (!/[.!?]$/.test(t)) t += '.';
+            return t;
+          };
+          topBullets = topBullets.map(soften);
           if (enforceCTAAppSim) {
             const cta = 'Acesse o aplicativo Velotax e faça a simulação de crédito na seção "Simulação de Crédito" para concluir a contratação.';
             if (!topBullets.some(l => l.toLowerCase().includes('simula'))) {
@@ -702,16 +726,26 @@ export default async function handler(req, res) {
 
     // Resposta 100% determinística com base no CSV (sem LLM)
     const respostaFinal = raw
-      ? [
-          'Agradecemos o seu contato.',
-          '',
-          `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
-          '',
-          'Orientação:',
-          raw,
-          '',
-          'Permanecemos à disposição para qualquer esclarecimento adicional.'
-        ].join('\n')
+      ? (()=>{
+          const soften = (s) => {
+            let t = String(s||'').trim();
+            if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+            t = t.replace(/\bAguarde\b/gi, 'Aguarde um instante, por favor')
+                 .replace(/\s{2,}/g, ' ').trim();
+            if (!/[.!?]$/.test(t)) t += '.';
+            return t;
+          };
+          return [
+            'Agradecemos o seu contato.',
+            '',
+            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
+            '',
+            'Orientação:',
+            soften(raw),
+            '',
+            'Permanecemos à disposição para qualquer esclarecimento adicional.'
+          ].join('\n');
+        })()
       : 'Agradecemos o seu contato. No momento não localizamos uma orientação diretamente aplicável na base. Por favor, descreva com mais detalhes para encaminharmos a resposta adequada.';
     return res.status(200).json({ resposta: respostaFinal });
     
