@@ -393,18 +393,23 @@ export default async function handler(req, res) {
           const contextText = topBullets.join('\n');
           const apiKey = process.env.GROQ_API_KEY || '';
 
-          // Se veio via router (tema explícito), usar formato determinístico e evitar LLM
+          // Se veio via router (tema explícito), só use formato determinístico imediato
+          // quando NÃO houver preferências aprendidas. Caso haja prefer/avoid, deixe o LLM
+          // considerar essas instruções para moldar a resposta.
           const viaRouter = Array.isArray(req.__allowedRouterTerms) && req.__allowedRouterTerms.length > 0;
-          if (viaRouter) {
+          const hasLearnedPrefs = (preferTerms && preferTerms.length) || (avoidTerms && avoidTerms.length);
+          if (viaRouter && !hasLearnedPrefs) {
             const corpo = [
               'Agradecemos o seu contato.',
               '',
               `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
               '',
-              'Orientação:',
-              ...topBullets.map((b, i) => (b ? `• ${b}` : '')).filter(Boolean),
+              'Orientações objetivas:',
+              ...topBullets.map((b, i) => `${i + 1}. ${b}`),
               '',
-              'Permanecemos à disposição para qualquer esclarecimento adicional.'
+              'Permanecemos à disposição para qualquer esclarecimento adicional.',
+              'Atenciosamente,',
+              'Equipe Velotax.'
             ].join('\n');
             return res.status(200).json({ resposta: corpo });
           }
