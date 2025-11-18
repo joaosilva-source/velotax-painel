@@ -27,6 +27,10 @@
     "file": "data/Seguros.md",
     "keywords": ["seguro", "seguros"]
   },
+  "credito_pessoal": {
+    "file": "data/outros.md",
+    "keywords": ["credito pessoal", "crédito pessoal", "contratar credito pessoal", "simulacao credito pessoal", "como contratar credito pessoal"]
+  },
   "outros": {
     "file": "data/outros.md",
     "keywords": ["outro", "diverso"]
