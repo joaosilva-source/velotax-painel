@@ -7,10 +7,7 @@ export default function Atendimento() {
   const [resposta, setResposta] = useState('');
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
-  const [tema, setTema] = useState('');
-  const [gids, setGids] = useState('');
-  const [temaDetectado, setTemaDetectado] = useState('');
-  const [fontes, setFontes] = useState([]);
+  // UI automática: sem campos extras
 
   const processar = async () => {
     setErro('');
@@ -22,13 +19,11 @@ export default function Atendimento() {
       const r = await fetch('/api/atendimento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pergunta: texto, tema: tema || undefined, gids: gids || undefined })
+        body: JSON.stringify({ pergunta: texto })
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || 'Falha ao processar');
       setResposta(j?.resposta || '');
-      setTemaDetectado(j?.temaDetectado || '');
-      setFontes(Array.isArray(j?.fontes) ? j.fontes : []);
     } catch (e) {
       setErro(e?.message || 'Erro inesperado');
     }
@@ -59,18 +54,6 @@ export default function Atendimento() {
               value={pergunta}
               onChange={(e) => setPergunta(e.target.value)}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-              <div>
-                <div className="text-sm mb-1">Forçar tema (opcional)</div>
-                <input className="input" placeholder="Ex.: Crédito do Trabalhador"
-                  value={tema} onChange={(e)=>setTema(e.target.value)} />
-              </div>
-              <div>
-                <div className="text-sm mb-1">GIDs da planilha (opcional)</div>
-                <input className="input" placeholder="Ex.: 0,123456789" value={gids}
-                  onChange={(e)=>setGids(e.target.value)} />
-              </div>
-            </div>
             <div className="mt-4 flex items-center gap-3">
               <button onClick={processar} disabled={loading} className="btn-primary">
                 {loading ? 'Processando…' : 'Processar Pergunta'}
@@ -89,27 +72,7 @@ export default function Atendimento() {
                 {resposta}
               </div>
             )}
-            {(temaDetectado || (fontes && fontes.length)) && (
-              <div className="mt-4 space-y-2 text-sm">
-                {temaDetectado && (
-                  <div className="text-black/70"><span className="font-medium">Tema detectado:</span> {temaDetectado}</div>
-                )}
-                {Array.isArray(fontes) && fontes.length > 0 && (
-                  <div>
-                    <div className="font-medium mb-1">Fontes utilizadas</div>
-                    <div className="space-y-2 max-h-64 overflow-auto">
-                      {fontes.map((f, idx) => (
-                        <div key={idx} className="p-3 bg-white border border-black/10 rounded">
-                          <div className="text-black/70">{f.tema || '—'}</div>
-                          <div className="text-xs text-black/60 mt-1"><span className="font-medium">Pergunta:</span> {f.pergunta}</div>
-                          <div className="text-xs text-black/60 mt-1"><span className="font-medium">Resposta:</span> {f.resposta}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* UI simplificada: sem exibir metadados; resposta pronta */}
           </div>
         </div>
       </div>
