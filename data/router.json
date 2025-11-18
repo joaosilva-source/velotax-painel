@@ -1,0 +1,34 @@
+{
+  "credito_trabalhador": {
+    "file": "data/Crédito do Trabalhador.md",
+    "keywords": ["credito trabalhador", "crédito trabalhador", "credito do trabalhador", "contratar", "carencia", "carência", "carencia de pagamento", "primeira cobranca", "primeira cobrança", "carencia 60", "carencia 90"]
+  },
+  "antecipacao_restituicao": {
+    "file": "data/antecipação_da_restituição.md",
+    "keywords": ["antecipacao", "antecipação", "restituicao", "restituição", "quitar", "quitacao", "ccb", "cet", "juros", "simulacao"]
+  },
+  "conta_pix": {
+    "file": "data/Conta e Chaves PIX.md",
+    "keywords": ["pix", "chave pix", "trocar chave", "alterar chave", "conta", "conta pix"]
+  },
+  "cadastro_app": {
+    "file": "data/Cadastro e Aplicativo.md",
+    "keywords": ["cadastro", "aplicativo", "app", "login", "acesso", "cadastro app"]
+  },
+  "irpf": {
+    "file": "data/IRPF e Declaração.md",
+    "keywords": ["irpf", "declaracao", "declaração", "malha", "e-cac", "ecac", "pendencia", "pendência"]
+  },
+  "invest_score": {
+    "file": "data/Investimentos e Score.md",
+    "keywords": ["score", "investimento", "open finance"]
+  },
+  "seguros": {
+    "file": "data/Seguros.md",
+    "keywords": ["seguro", "seguros"]
+  },
+  "outros": {
+    "file": "data/outros.md",
+    "keywords": ["outro", "diverso"]
+  }
+}

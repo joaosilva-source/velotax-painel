@@ -52,6 +52,37 @@ export default async function handler(req, res) {
       scanDir('data');
       scanDir(path.join('public','data'));
 
+      // Router por palavras-chave (se existir em data/router.json)
+      try {
+        const routerPath = path.join(process.cwd(), 'data', 'router.json');
+        if (fs.existsSync(routerPath)) {
+          const rawRouter = fs.readFileSync(routerPath, 'utf8');
+          const router = JSON.parse(rawRouter || '{}');
+          const qn = normalize(pergunta);
+          let bestRoute = { file: '', hits: 0 };
+          for (const key of Object.keys(router || {})) {
+            try {
+              const entry = router[key];
+              const kws = Array.isArray(entry?.keywords) ? entry.keywords.map(String) : [];
+              let h = 0;
+              for (const kw of kws) {
+                const kn = normalize(kw);
+                if (kn && qn.includes(kn)) h++;
+              }
+              if (h > bestRoute.hits) bestRoute = { file: entry?.file || '', hits: h };
+            } catch {}
+          }
+          if (bestRoute.file && bestRoute.hits > 0) {
+            const abs1 = path.isAbsolute(bestRoute.file) ? bestRoute.file : path.join(process.cwd(), bestRoute.file);
+            if (fs.existsSync(abs1)) {
+              // força uso apenas deste arquivo
+              candidatePaths.length = 0;
+              candidatePaths.push(abs1);
+            }
+          }
+        }
+      } catch {}
+
       // Helper: read text from a candidate path (txt or pdf)
       const readCandidateText = async (p) => {
         try {
