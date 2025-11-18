@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
     // 0) Fonte alternativa: base textual local (DATA_TEXT_PATH ou data/document 1 / document 1.pdf)
     try {
-      const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : 'data/document 1';
+      const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : 'data/document 1.pdf';
       const absText = path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath);
       let textBase = '';
       // 0a) tentar TXT puro
@@ -46,8 +46,46 @@ export default async function handler(req, res) {
           }
         } catch {}
       }
+      // 0b2) tentar PDF em public/data/document 1.pdf
+      if (!textBase || !textBase.trim()) {
+        try {
+          const publicPdf = path.join(process.cwd(), 'public', 'data', 'document 1.pdf');
+          if (fs.existsSync(publicPdf)) {
+            const pdfParse = (await import('pdf-parse')).default;
+            const buf = fs.readFileSync(publicPdf);
+            const pdfData = await pdfParse(buf);
+            textBase = String(pdfData?.text || '');
+          }
+        } catch {}
+      }
+      // 0c) em ambientes serverless, tentar baixar do caminho público
+      if ((!textBase || !textBase.trim())) {
+        try {
+          const proto = (req.headers['x-forwarded-proto'] || 'https');
+          const host = req.headers.host;
+          if (host) {
+            const baseUrl = `${proto}://${host}`;
+            // tentar TXT público
+            const rTxt = await fetch(`${baseUrl}/data/document%201`);
+            if (rTxt.ok) {
+              const t = await rTxt.text();
+              if (t && t.trim()) textBase = t;
+            }
+            if (!textBase || !textBase.trim()) {
+              const rPdf = await fetch(`${baseUrl}/data/document%201.pdf`);
+              if (rPdf.ok) {
+                const ab = await rPdf.arrayBuffer();
+                const pdfParse = (await import('pdf-parse')).default;
+                const pdfData = await pdfParse(Buffer.from(ab));
+                textBase = String(pdfData?.text || '');
+              }
+            }
+          }
+        } catch {}
+      }
       const textFileExists = fs.existsSync(absText) || fs.existsSync(absText + '.pdf');
       if (textBase && textBase.trim()) {
+        try { console.log('[ATENDIMENTO] usando base textual:', absText); } catch {}
         let sections = String(textBase).split(/\n{2,}/g).map((s) => s.trim()).filter(Boolean);
         if (sections.length < 3) {
           // PDF pode vir com quebras simples; agrupar linhas em blocos
@@ -139,6 +177,7 @@ export default async function handler(req, res) {
           ].join('\n');
           return res.status(200).json({ resposta: respostaFinal });
         } else if (textFileExists) {
+          try { console.log('[ATENDIMENTO] base textual presente, nenhum trecho casou.'); } catch {}
           // Forçar uso de base textual quando presente
           const respostaFinal = [
             'Agradecemos o seu contato.',
