@@ -9,6 +9,7 @@ export default function Home() {
   const [searchCpf, setSearchCpf] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [searchCpfError, setSearchCpfError] = useState('');
   const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -183,7 +184,17 @@ export default function Home() {
 
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
-    if (!digits) { setSearchResults([]); return; }
+    if (!digits) {
+      setSearchResults([]);
+      setSearchCpfError('CPF inválido. Digite os 11 dígitos.');
+      return;
+    }
+    if (digits.length !== 11) {
+      setSearchResults([]);
+      setSearchCpfError('CPF inválido. Digite os 11 dígitos.');
+      return;
+    }
+    setSearchCpfError('');
     setSearchLoading(true);
     try {
       const res = await fetch('/api/requests');
@@ -273,7 +284,16 @@ export default function Home() {
                 <div className="flex flex-col md:flex-row gap-2 md:items-end" aria-busy={searchLoading} aria-live="polite">
                   <div className="flex-1">
                     <label className="text-sm text-black/80">CPF</label>
-                    <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); buscarCpf(); } }} />
+                    <input
+                      className="input"
+                      placeholder="Digite o CPF"
+                      value={searchCpf}
+                      onChange={(e) => { setSearchCpf(e.target.value); if (searchCpfError) setSearchCpfError(''); }}
+                      onKeyDown={(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); buscarCpf(); } }}
+                    />
+                    {searchCpfError && (
+                      <div className="mt-1 text-xs text-red-600">{searchCpfError}</div>
+                    )}
                   </div>
                   <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2 inline-flex items-center gap-2 transition-all duration-200" disabled={searchLoading}>
                     {searchLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Buscando...</>) : 'Buscar'}

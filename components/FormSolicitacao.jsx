@@ -19,6 +19,7 @@ export default function FormSolicitacao({ registrarLog }) {
     observacoes: "",
   });
   const [loading, setLoading] = useState(false);
+  const [cpfError, setCpfError] = useState('');
   const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
   const [buscaCpf, setBuscaCpf] = useState("");
   const [buscando, setBuscando] = useState(false);
@@ -111,6 +112,9 @@ export default function FormSolicitacao({ registrarLog }) {
 
   const atualizar = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }));
+    if (campo === 'cpf') {
+      setCpfError('');
+    }
     if (campo === 'agente') {
       const norm = toTitleCase(valor);
       try { localStorage.setItem('velotax_agent', norm); } catch {}
@@ -147,6 +151,12 @@ export default function FormSolicitacao({ registrarLog }) {
 
   const enviar = async (e) => {
     e.preventDefault();
+    const digits = String(form.cpf || '').replace(/\D/g, '');
+    if (digits.length !== 11) {
+      setCpfError('CPF inválido. Digite os 11 dígitos.');
+      toast.error('CPF inválido. Digite os 11 dígitos.');
+      return;
+    }
     setLoading(true);
     registrarLog("Iniciando envio...");
 
@@ -266,6 +276,9 @@ export default function FormSolicitacao({ registrarLog }) {
             </span>
             <input className="input input-with-icon" placeholder="000.000.000-00" value={form.cpf} onChange={(e) => atualizar("cpf", e.target.value)} required />
           </div>
+          {cpfError && (
+            <div className="mt-1 text-xs text-red-600">{cpfError}</div>
+          )}
           <div className="mt-2">
             <button type="button" onClick={() => { setBuscaCpf(form.cpf); (async () => { await buscarCpf(); })(); }} className="text-sm px-2 py-1 rounded bg-black/5 hover:bg-black/10">
               Consultar histórico deste CPF
