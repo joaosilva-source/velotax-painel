@@ -255,18 +255,9 @@ export default function FormSolicitacao({ registrarLog }) {
   };
 
   return (
-    <form onSubmit={enviar} className="space-y-5 relative" aria-busy={loading} aria-live="polite">
+    <form onSubmit={enviar} onKeyDown={(e)=>{ if(e.key==='Enter' && e.shiftKey){ e.preventDefault(); enviar(e); } }} className="space-y-5 relative" aria-busy={loading} aria-live="polite">
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm text-black/80">Agente</label>
-          <div className="input-wrap">
-            <span className="input-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5Z" fill="currentColor"/></svg>
-            </span>
-            <input className="input input-with-icon" placeholder="Nome do agente" value={form.agente} onChange={(e) => atualizar("agente", e.target.value)} onBlur={(e)=> atualizar('agente', toTitleCase(e.target.value))} required />
-          </div>
-        </div>
         <div>
           <label className="text-sm text-black/80">CPF</label>
           <div className="input-wrap">
@@ -390,15 +381,19 @@ export default function FormSolicitacao({ registrarLog }) {
             const s = String(l.status || '').toLowerCase();
             // Mapeamento de barras:
             // - 'feito' => 3 verdes
-            // - 'não feito' => 3 verdes
+            // - 'não feito' => 3 vermelhas
             // - 'enviado' (ou enviado==true) => 2 amarelas
             // - demais => 1 cinza
-            const done = s === 'feito' || s === 'nao feito' || s === 'não feito';
-            const sentOnly = (!done) && (s === 'enviado' || l.enviado === true);
-            const bar1 = done ? 'bg-emerald-500' : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
-            const bar2 = done ? 'bg-emerald-500' : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
-            const bar3 = done ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20';
-            const icon = done ? '✅' : (s === 'não feito' || s === 'nao feito' ? '❌' : (sentOnly ? '📨' : '⏳'));
+            const isDoneFail = (s === 'não feito' || s === 'nao feito');
+            const isDoneOk = (s === 'feito');
+            const sentOnly = (!isDoneOk && !isDoneFail) && (s === 'enviado' || l.enviado === true);
+            const colorDone1 = isDoneFail ? 'bg-red-500' : 'bg-emerald-500';
+            const colorDone2 = isDoneFail ? 'bg-red-500' : 'bg-emerald-500';
+            const colorDone3 = isDoneFail ? 'bg-red-500' : 'bg-emerald-500';
+            const bar1 = (isDoneOk || isDoneFail) ? colorDone1 : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
+            const bar2 = (isDoneOk || isDoneFail) ? colorDone2 : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
+            const bar3 = (isDoneOk || isDoneFail) ? colorDone3 : 'bg-black/15 dark:bg-white/20';
+            const icon = isDoneOk ? '✅' : (isDoneFail ? '❌' : (sentOnly ? '📨' : '⏳'));
             return (
               <div key={idx} className="p-3 bg-white rounded border border-black/10">
                 <div className="flex items-center justify-between">

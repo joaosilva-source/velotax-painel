@@ -11,6 +11,7 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([]);
   const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [requestsRaw, setRequestsRaw] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState("");
   const [agentHistory, setAgentHistory] = useState([]);
@@ -35,6 +36,7 @@ export default function Home() {
       const list = await res.json();
       const arr = Array.isArray(list) ? list : [];
       setRequestsRaw(arr);
+      setLastUpdated(new Date());
       // pegar agente do cache local do usuário
       try {
         const agent = localStorage.getItem('velotax_agent');
@@ -249,8 +251,18 @@ export default function Home() {
                     />
                   </div>
                   <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90 inline-flex items-center gap-2 transition-all duration-200">
-                    {statsLoading ? (<img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} />) : 'Atualizar agora'}
+                    {statsLoading ? (
+                      <svg width="16" height="16" viewBox="0 0 50 50" role="img" aria-label="Carregando" style={{ display: 'block' }}>
+                        <circle cx="25" cy="25" r="20" stroke="#94a3b8" strokeWidth="6" fill="none" opacity="0.25" />
+                        <path d="M25 5 a20 20 0 0 1 0 40" stroke="#0ea5e9" strokeWidth="6" fill="none">
+                          <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="0.8s" repeatCount="indefinite" />
+                        </path>
+                      </svg>
+                    ) : 'Atualizar agora'}
                   </button>
+                  <div className="text-[11px] text-black/60 min-w-[120px] text-right">
+                    {lastUpdated ? `Atualizado às ${new Date(lastUpdated).toLocaleTimeString()}` : ''}
+                  </div>
                 </div>
               </div>
               <div className="mb-6 bg-white/80 backdrop-blur p-4 rounded-xl border border-black/10">
@@ -261,7 +273,7 @@ export default function Home() {
                 <div className="flex flex-col md:flex-row gap-2 md:items-end" aria-busy={searchLoading} aria-live="polite">
                   <div className="flex-1">
                     <label className="text-sm text-black/80">CPF</label>
-                    <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} />
+                    <input className="input" placeholder="Digite o CPF" value={searchCpf} onChange={(e) => setSearchCpf(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); buscarCpf(); } }} />
                   </div>
                   <button type="button" onClick={buscarCpf} className="btn-primary px-3 py-2 inline-flex items-center gap-2 transition-all duration-200" disabled={searchLoading}>
                     {searchLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Buscando...</>) : 'Buscar'}
@@ -328,15 +340,22 @@ export default function Home() {
                     <div className="text-sm opacity-70">Nenhum registro.</div>
                   )}
                   <div className="space-y-2 max-h-72 overflow-auto pr-1 mt-2">
-                    {agentHistory.slice(0, agentHistoryLimit).map((r) => (
-                      <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                          <div className="text-xs text-black/60">Status: {r.status || '—'}</div>
+                    {agentHistory.slice(0, agentHistoryLimit).map((r) => {
+                      const s = String(r.status || '').toLowerCase();
+                      const badge = s === 'feito' ? 'bg-emerald-100 text-emerald-700' : ((s === 'não feito' || s === 'nao feito') ? 'bg-red-100 text-red-700' : (s === 'enviado' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'));
+                      return (
+                        <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                            <div className="text-xs text-black/60 flex items-center gap-2">
+                              <span>Status:</span>
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${badge}`}>{s || '—'}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
                         </div>
-                        <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   {agentHistory.length > agentHistoryLimit && (
                     <div className="mt-3 text-right">
