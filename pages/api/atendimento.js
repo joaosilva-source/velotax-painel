@@ -70,6 +70,10 @@ export default async function handler(req, res) {
     try {
       const qHasFGTS = /fgts/i.test(String(pergunta||''));
       const qIsHowToContract = /\b(contratar|como\s+contratar|simula[cç][aã]o)\b/i.test(String(pergunta||''));
+      const qHasQuit = /quita[cç][aã]o|quitar|quitou|quitei/i.test(String(pergunta||''));
+      const qHasDescFolha = /(desconto|descontado).{0,12}folha|folha.{0,12}(desconto|descontado)/i.test(String(pergunta||''));
+      const qHasCancel = /cancelar|cancelamento/i.test(String(pergunta||''));
+      const qHasNovaContr = /nova\s+contrata|contrata[cç][aã]o\s+nova/i.test(String(pergunta||''));
       if (qIsHowToContract) enforceCTAAppSim = true;
       const textPath = process.env.DATA_TEXT_PATH ? String(process.env.DATA_TEXT_PATH) : '';
       const absConfigured = textPath ? (path.isAbsolute(textPath) ? textPath : path.join(process.cwd(), textPath)) : '';
@@ -384,6 +388,12 @@ export default async function handler(req, res) {
           for (const tr of qTri) if (tr && secNorm.includes(tr)) s += 8;
           // pequeno bônus se contém frase completa de consulta
           if (qNorm && secNorm.includes(qNorm)) s += 2;
+          // Bônus direcionado por intenção
+          if (qHasQuit && /(quita(c|ç)[aã]o|quitar|quit[aou]u?)/i.test(sec)) s += 10;
+          if (qHasDescFolha && /(desconto|descontado).{0,16}folha|folha.{0,16}(desconto|descontado)/i.test(sec)) s += 12;
+          if (qHasCancel && /cancelament|cancelar/i.test(sec)) s += 6;
+          // Penalizar seções de "nova contratação" quando a pergunta não fala disso
+          if (!qHasNovaContr && /nova\s+contrata|contrata[cç][aã]o\s+nova/i.test(sec)) s -= 6;
           return { sec, _score: s };
         }).sort((a,b) => b._score - a._score);
 
@@ -461,8 +471,6 @@ export default async function handler(req, res) {
                       const corpo = [
                         'Agradecemos o seu contato.',
                         '',
-                        `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
-                        '',
                         'Orientações objetivas:',
                         ...bullets.map((b,i)=>`${i+1}. ${b}`),
                         '',
@@ -488,7 +496,11 @@ export default async function handler(req, res) {
                 .split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Ý])/g)
                 .map(s => s.replace(/\s{2,}/g,' ').trim())
                 .filter(s => s.length > 0 && s.length <= 280);
-              const rel = rawSentences.filter(s => /(contrata(c|ç)[aã]o|contratar|simula(c|ç)[aã]o|app|aplicativo|proposta|confirmar)/i.test(s));
+              const rel = rawSentences
+                // manter só contratação/simulação/app/proposta/confirmar/liberação
+                .filter(s => /(contrata(c|ç)[aã]o|contratar|simula(c|ç)[aã]o|app|aplicativo|proposta|confirmar|libera(c|ç)[aã]o)/i.test(s))
+                // excluir outras seções
+                .filter(s => !/(cancelamento|cancelar|quita(c|ç)[aã]o|quitar|inadimpl|pix\s+copia\s+e\s+cola)/i.test(s));
               // Deduplicar por normalização simples
               const seen = new Set();
               const uniq = [];
@@ -498,9 +510,12 @@ export default async function handler(req, res) {
               }
               // Selecionar até 6 bullets
               let bullets = uniq.slice(0, 6);
-              // Suavizar tom
+              // Suavizar tom + converter para 2ª pessoa
               const soften = (t) => {
                 let s = String(t||'').trim();
+                // terceira -> segunda pessoa
+                s = s.replace(/\bO cliente\b/gi, 'Você')
+                     .replace(/\bo cliente\b/gi, 'você');
                 if (s) s = s.charAt(0).toUpperCase() + s.slice(1);
                 s = s.replace(/\bAguarde\b/gi, 'Aguarde um instante, por favor')
                      .replace(/\s{2,}/g, ' ').trim();
@@ -516,8 +531,6 @@ export default async function handler(req, res) {
               }
               const corpo = [
                 'Agradecemos o seu contato.',
-                '',
-                `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
                 '',
                 'Orientações objetivas:',
                 ...bullets.map((b,i)=>`${i+1}. ${b}`),
@@ -618,8 +631,6 @@ export default async function handler(req, res) {
           };
           const corpo = [
             'Agradecemos o seu contato.',
-            '',
-            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
             '',
             'Orientações objetivas:',
             ...topBullets.map((b, i) => `${i + 1}. ${b}`),
@@ -805,8 +816,6 @@ export default async function handler(req, res) {
           };
           return [
             'Agradecemos o seu contato.',
-            '',
-            `Sobre a sua solicitação: "${String(pergunta).trim()}".`,
             '',
             'Orientação:',
             soften(raw),
