@@ -249,7 +249,7 @@ export default function Home() {
                     />
                   </div>
                   <button onClick={loadStats} disabled={statsLoading} className="text-sm px-3 py-2 rounded border hover:opacity-90 inline-flex items-center gap-2 transition-all duration-200">
-                    {statsLoading ? (<><img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} /> Atualizando…</>) : 'Atualizar agora'}
+                    {statsLoading ? (<img src="/brand/loading.gif" alt="Carregando" style={{ width: 16, height: 16 }} />) : 'Atualizar agora'}
                   </button>
                 </div>
               </div>
@@ -366,32 +366,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="fixed right-4 top-24 w-80 max-w-[90vw] bg-white border border-black/10 rounded-xl shadow-lg p-3 z-40">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-            <div className="text-sm font-semibold">Respostas (tempo real)</div>
-          </div>
-          {replies.length === 0 && (
-            <div className="text-xs text-black/60">Aguardando respostas…</div>
-          )}
-          {replies.length > 0 && (
-            <div className="space-y-2 max-h-80 overflow-auto pr-1">
-              {(replies.filter(r => myAgent ? norm(r.agente||'')===norm(myAgent) : true)).map((r, idx) => (
-                <div key={(r.waMessageId||'')+idx} className="p-2 bg-white rounded border border-black/10">
-                  <div className="text-sm font-medium break-words whitespace-pre-line">{r.text || '—'}</div>
-                  <div className="text-xs text-black/70 mt-1">CPF: {r.cpf || '—'}</div>
-                  <div className="text-[11px] opacity-60 mt-1">{new Date(r.at || Date.now()).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {replies.length > 0 && myAgent && (replies.filter(r => norm(r.agente||'')===norm(myAgent))).length === 0 && (
-            <div className="text-xs text-black/60 mt-2">Nenhuma resposta para seu agente.</div>
-          )}
-          {!myAgent && replies.length > 0 && (
-            <div className="text-xs text-black/60 mt-2">Defina seu nome de agente no formulário para filtrar suas respostas.</div>
-          )}
-        </div>
+        {/* Painel de mensagens removido temporariamente */}
       </div>
     </>
   );

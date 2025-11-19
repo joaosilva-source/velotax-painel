@@ -234,8 +234,17 @@ export default function AdminLogs() {
   const chartData = useMemo(() => {
     const list = filteredRequests;
     // filtrar por dia específico para o gráfico por hora, se selecionado
-    const dayStr = hourDay ? new Date(hourDay).toDateString() : null;
-    const listForHour = dayStr ? list.filter((r) => new Date(r?.createdAt || 0).toDateString() === dayStr) : list;
+    const toYmd = (d) => {
+      try {
+        const dt = new Date(d);
+        const yyyy = dt.getFullYear();
+        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+        const dd = String(dt.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      } catch { return ''; }
+    };
+    const dayYmd = hourDay ? String(hourDay) : null; // input já vem em YYYY-MM-DD
+    const listForHour = dayYmd ? list.filter((r) => toYmd(r?.createdAt || 0) === dayYmd) : list;
     const byType = {};
     const byAgent = {};
     const byHour = Array.from({ length: 24 }, () => 0);

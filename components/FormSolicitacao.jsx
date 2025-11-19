@@ -235,11 +235,13 @@ export default function FormSolicitacao({ registrarLog }) {
         notifyError('Falha ao enviar solicitação', txt || 'Erro desconhecido da API');
       }
 
+      const wasSentOK = !!(apiUrl && defaultJid && res && res.ok);
       const newItem = {
         cpf: form.cpf,
         tipo: form.tipo,
         waMessageId,
-        status: 'em aberto',
+        status: wasSentOK ? 'enviado' : 'em aberto',
+        enviado: wasSentOK,
         createdAt: new Date().toISOString(),
       };
       saveCache([newItem, ...localLogs].slice(0, 50));
@@ -385,9 +387,18 @@ export default function FormSolicitacao({ registrarLog }) {
         )}
         <div className="space-y-2 max-h-56 overflow-auto pr-1">
           {localLogs.map((l, idx) => {
-            const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
             const s = String(l.status || '').toLowerCase();
-            const step = s === 'feito' ? 3 : (s === 'não feito' ? 2 : 1);
+            // Mapeamento de barras:
+            // - 'feito' => 3 verdes
+            // - 'não feito' => 3 verdes
+            // - 'enviado' (ou enviado==true) => 2 amarelas
+            // - demais => 1 cinza
+            const done = s === 'feito' || s === 'nao feito' || s === 'não feito';
+            const sentOnly = (!done) && (s === 'enviado' || l.enviado === true);
+            const bar1 = done ? 'bg-emerald-500' : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
+            const bar2 = done ? 'bg-emerald-500' : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
+            const bar3 = done ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20';
+            const icon = done ? '✅' : (s === 'não feito' || s === 'nao feito' ? '❌' : (sentOnly ? '📨' : '⏳'));
             return (
               <div key={idx} className="p-3 bg-white rounded border border-black/10">
                 <div className="flex items-center justify-between">
@@ -398,9 +409,9 @@ export default function FormSolicitacao({ registrarLog }) {
                   <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5" aria-label={`progresso: ${s || 'em aberto'}`}>
-                  <span className={`h-1.5 w-8 rounded-full ${1 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
-                  <span className={`h-1.5 w-8 rounded-full ${2 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
-                  <span className={`h-1.5 w-8 rounded-full ${3 <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
+                  <span className={`h-1.5 w-8 rounded-full ${bar1}`}></span>
+                  <span className={`h-1.5 w-8 rounded-full ${bar2}`}></span>
+                  <span className={`h-1.5 w-8 rounded-full ${bar3}`}></span>
                   <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
                 </div>
               </div>
@@ -413,7 +424,6 @@ export default function FormSolicitacao({ registrarLog }) {
         <div className="loading-overlay backdrop-blur-sm transition-opacity duration-200" style={{ background: 'linear-gradient(180deg, rgba(2,6,23,0.20), rgba(2,6,23,0.35))' }}>
           <div className="loading-card" style={{ background: 'transparent', border: 'none', boxShadow: 'none' }}>
             <img src="/brand/loading.gif" alt="Carregando" style={{ width: 72, height: 72, objectFit: 'contain' }} />
-            <div className="mt-2 text-white/90 text-sm">Enviando solicitação…</div>
           </div>
         </div>
       )}
