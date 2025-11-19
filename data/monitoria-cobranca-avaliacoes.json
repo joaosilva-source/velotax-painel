@@ -1,0 +1,53 @@
+[
+  {
+    "id": "mi6d1it1xccxgr",
+    "ligacao": {
+      "analista": "Marco",
+      "dataLigacao": "03/11/2025 15:41:05",
+      "data": "03/11/2025 15:41:32",
+      "cliente": "Marco",
+      "contrato": "2476343",
+      "campanha": "Pré Cobrança Empréstimo Pessoal Velotax"
+    },
+    "produto": "Empréstimo pessoal",
+    "respostas": {
+      "abertura_confirmacao_dados": "sim",
+      "conduta_tom_voz": "nao",
+      "negociacao_valor": "sim",
+      "negociacao_alternativas": "sim",
+      "encerramento_entendimento": "sim",
+      "encerramento_agradecimento": "sim",
+      "conformidade_script": "sim",
+      "conformidade_infracoes": "sim"
+    },
+    "pontuacaoTotal": 55,
+    "observacao": "teste",
+    "criadoEm": "2025-11-19T18:53:15.253Z"
+  },
+  {
+    "id": "mi6equt1h9h2i2",
+    "ligacao": {
+      "analista": "teste",
+      "dataLigacao": "03/11/2025 10:54:31",
+      "data": "03/11/2025 10:54:47",
+      "cliente": "Eliane",
+      "contrato": "2313258",
+      "campanha": "Cobrança Velotax Empréstimo Pessoal"
+    },
+    "produto": "Empréstimo pessoal",
+    "respostas": {
+      "encerramento_entendimento": "sim",
+      "negociacao_alternativas": "sim",
+      "conduta_tom_voz": "sim",
+      "abertura_confirmacao_dados": "nao",
+      "abertura_saudacao": "sim",
+      "encerramento_agradecimento": "sim",
+      "conformidade_registro": "sim",
+      "conformidade_script": "sim",
+      "conformidade_infracoes": "sim"
+    },
+    "pontuacaoTotal": 65,
+    "observacao": "teste",
+    "criadoEm": "2025-11-19T19:40:56.822Z"
+  }
+]
