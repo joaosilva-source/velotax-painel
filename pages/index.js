@@ -2,7 +2,7 @@
 import Head from "next/head";
 
 export default function Home() {
-  const velohubUrl = process.env.NEXT_PUBLIC_VELOHUB_URL || 'https://velohub.velotax.com.br';
+  const velohubUrl = 'https://app.velohub.velotax.com.br/';
 
   return (
     <>
