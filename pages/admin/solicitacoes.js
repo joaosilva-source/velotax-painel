@@ -10,6 +10,7 @@ export default function AdminSolicitacoes() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalImages, setModalImages] = useState([]); // array de dataURLs
   const [modalIndex, setModalIndex] = useState(0);
+  const [sortKey, setSortKey] = useState('created_desc'); // created_desc, created_asc, cpf_asc, cpf_desc
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -65,6 +66,25 @@ export default function AdminSolicitacoes() {
     });
   }, [data, status, filterTipo, searchCpf]);
 
+  const ordenados = useMemo(() => {
+    const arr = [...filtrados];
+    arr.sort((a, b) => {
+      if (sortKey === 'created_asc' || sortKey === 'created_desc') {
+        const da = new Date(a.createdAt || 0).getTime();
+        const db = new Date(b.createdAt || 0).getTime();
+        return sortKey === 'created_asc' ? da - db : db - da;
+      }
+      if (sortKey === 'cpf_asc' || sortKey === 'cpf_desc') {
+        const ca = String(a.cpf || '').replace(/\D/g, '');
+        const cb = String(b.cpf || '').replace(/\D/g, '');
+        if (ca === cb) return 0;
+        return sortKey === 'cpf_asc' ? (ca < cb ? -1 : 1) : (ca > cb ? -1 : 1);
+      }
+      return 0;
+    });
+    return arr;
+  }, [filtrados, sortKey]);
+
   const getDescricao = (r) => {
     const p = r?.payload || {};
     if (String(r?.tipo || '').startsWith('Erro/Bug')) return p?.descricao || '';
@@ -90,6 +110,13 @@ export default function AdminSolicitacoes() {
           ))}
         </select>
         <button className="btn-primary" onClick={carregar} disabled={loading}>{loading ? 'Atualizando...' : 'Atualizar'}</button>
+        <label>Ordenar por:</label>
+        <select className="input" value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+          <option value="created_desc">Data (mais recente primeiro)</option>
+          <option value="created_asc">Data (mais antiga primeiro)</option>
+          <option value="cpf_asc">CPF (A-Z)</option>
+          <option value="cpf_desc">CPF (Z-A)</option>
+        </select>
         <button
           className="px-3 py-2 rounded bg-black/10 hover:bg-black/20"
           onClick={() => {
@@ -118,7 +145,7 @@ export default function AdminSolicitacoes() {
       </div>
 
       <div className="space-y-3">
-        {filtrados.map((r) => (
+        {ordenados.map((r) => (
           <div
             key={r.id}
             className="p-4 bg-white rounded-lg border border-black/10 cursor-pointer"
@@ -152,6 +179,19 @@ export default function AdminSolicitacoes() {
                 ) : null;
               })()}
             </div>
+            {/* Datas de abertura / conclusão */}
+            {(() => {
+              const created = r.createdAt ? new Date(r.createdAt).toLocaleString() : '—';
+              const isDone = r.status === 'feito' || r.status === 'não feito';
+              const concluded = isDone && r.updatedAt ? new Date(r.updatedAt).toLocaleString() : null;
+              return (
+                <div className="mt-1 text-xs text-black/60">
+                  <span>Aberto em: {created}</span>
+                  {concluded && <span className="ml-2">• Concluído em: {concluded}</span>}
+                </div>
+              );
+            })()}
+
             {/* Descrição (expandível) */}
             {(() => {
               const full = getDescricao(r) || '';
