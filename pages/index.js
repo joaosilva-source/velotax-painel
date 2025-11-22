@@ -20,10 +20,13 @@ export default function Home() {
 
           {/* 3 CARDS NA PARTE DE BAIXO */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a href="/painel" className="card hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3">
+            <a
+              href="/painel"
+              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
+            >
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-sky-500 to-emerald-500" />
-                <h2 className="text-lg font-semibold">Painel de Solicitações</h2>
+                <h2 className="text-lg font-semibold text-[#000058]">Painel de Solicitações</h2>
               </div>
               <p className="text-sm text-black/70">
                 Enviar solicitações técnicas, acompanhar status por CPF e visualizar histórico por agente.
@@ -31,10 +34,13 @@ export default function Home() {
               <div className="mt-auto text-xs text-sky-700 font-medium">Acessar painel →</div>
             </a>
 
-            <a href="/erros-bugs" className="card hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3">
+            <a
+              href="/erros-bugs"
+              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
+            >
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-rose-500 to-amber-500" />
-                <h2 className="text-lg font-semibold">Erros / Bugs</h2>
+                <h2 className="text-lg font-semibold text-[#000058]">Erros / Bugs</h2>
               </div>
               <p className="text-sm text-black/70">
                 Registrar problemas do app com prints, descrição e status de resolução pela equipe técnica.
@@ -42,13 +48,18 @@ export default function Home() {
               <div className="mt-auto text-xs text-rose-700 font-medium">Abrir página de erros →</div>
             </a>
 
-            <a href={velohubUrl} target="_blank" rel="noopener" className="card hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3">
+            <a
+              href={velohubUrl}
+              target="_blank"
+              rel="noopener"
+              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
+            >
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-emerald-500 to-sky-500" />
-                <h2 className="text-lg font-semibold">Velohub</h2>
+                <h2 className="text-lg font-semibold text-[#000058]">Velohub</h2>
               </div>
               <p className="text-sm text-black/70">
-                Acessar o hub principal da Velotax com visão consolidada de clientes, produtos e indicadores.
+                Acesso à página inicial do nosso hub, Velobot, artigos e muito mais.
               </p>
               <div className="mt-auto text-xs text-emerald-700 font-medium">Ir para o Velohub ↗</div>
             </a>
