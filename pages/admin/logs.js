@@ -35,6 +35,9 @@ function canonicalizeTypeKey(raw) {
   if ((norm.includes('exclui') || norm.includes('excluir') || norm.includes('exclusao')) && norm.includes('conta')) {
     return 'exclusao de conta';
   }
+  if (norm.includes('alteracao') && (norm.includes('dado') || norm.includes('cadastra'))) {
+    return 'alteracao de dados cadastrais';
+  }
   return norm;
 }
 
@@ -42,6 +45,9 @@ function canonicalizeTypeLabel(raw) {
   const norm = normalizeName(raw || 'outro') || 'outro';
   if ((norm.includes('exclui') || norm.includes('excluir') || norm.includes('exclusao')) && norm.includes('conta')) {
     return 'Exclusão de Conta';
+  }
+  if (norm.includes('alteracao') && (norm.includes('dado') || norm.includes('cadastra'))) {
+    return 'Alteração de Dados Cadastrais';
   }
   return raw || 'Outro';
 }
@@ -84,7 +90,40 @@ function formatItem(log) {
     return { icon: 'ℹ️', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} (status: ${st})` };
   }
   if (a === 'send_request') {
-    return { icon: '📨', text: `${d.cpf || 'CPF'} — ${d.tipo || 'Tipo'} enviado` };
+    const tipo = d.tipo || 'Tipo';
+    const cpf = d.cpf || 'CPF';
+    const tipoKey = canonicalizeTypeKey(tipo);
+
+    if (tipoKey === 'exclusao de conta' && d.exclusao) {
+      const ex = d.exclusao || {};
+      const partes = [];
+      if (ex.excluirVelotax) partes.push('Velotax');
+      if (ex.excluirCelcoin) partes.push('Celcoin');
+      const destinos = partes.length ? ` (${partes.join(', ')})` : '';
+      const flags = [];
+      if (ex.saldoZerado) flags.push('saldo zerado');
+      if (ex.portabilidadePendente) flags.push('portabilidade pendente');
+      if (ex.dividaIrpfQuitada) flags.push('IRPF quitada');
+      const extras = flags.length ? ` — ${flags.join(' · ')}` : '';
+      return {
+        icon: '🗑️',
+        text: `${cpf} — Exclusão de Conta${destinos}${extras}`,
+      };
+    }
+
+    if (tipoKey === 'alteracao de dados cadastrais' && d.alteracao) {
+      const al = d.alteracao || {};
+      const campo = al.infoTipo || 'Dado';
+      const antigo = al.dadoAntigo || '—';
+      const novo = al.dadoNovo || '—';
+      const fotos = al.fotosVerificadas ? 'com fotos verificadas' : 'sem fotos verificadas';
+      return {
+        icon: '✏️',
+        text: `${cpf} — Alteração de ${campo}: "${antigo}" → "${novo}" (${fotos})`,
+      };
+    }
+
+    return { icon: '📨', text: `${cpf} — ${tipo} enviado` };
   }
   return { icon: '📝', text: a };
 }
@@ -100,6 +139,7 @@ export default function AdminLogs() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [hourDay, setHourDay] = useState(''); // seletor do dia para gráfico por hora
+  const [activeTab, setActiveTab] = useState('todos'); // abas de resumo
 
   // Helpers: chips rápidos de período
   const dateToInputStr = (d) => {
@@ -173,12 +213,31 @@ export default function AdminLogs() {
         // remover eventos de teste visuais
         return !(isTestString(d?.tipo) || isTestString(d?.agente));
       })
-      .map((l) => ({
-        id: l.id,
-        createdAt: new Date(l.createdAt).toLocaleString(),
-        ...formatItem(l)
-      }));
+      .map((l) => {
+        const base = formatItem(l);
+        const tipo = l?.detail?.tipo || '';
+        const tipoKey = canonicalizeTypeKey(tipo);
+        return {
+          id: l.id,
+          createdAt: new Date(l.createdAt).toLocaleString(),
+          tipoKey,
+          action: l.action,
+          raw: l,
+          ...base,
+        };
+      });
   }, [items]);
+
+  const filteredRowsByTab = useMemo(() => {
+    if (activeTab === 'todos') return rows;
+    if (activeTab === 'exclusao') {
+      return rows.filter((r) => r.action === 'send_request' && r.tipoKey === 'exclusao de conta');
+    }
+    if (activeTab === 'alteracao') {
+      return rows.filter((r) => r.action === 'send_request' && r.tipoKey === 'alteracao de dados cadastrais');
+    }
+    return rows;
+  }, [rows, activeTab]);
 
   const agentGroups = useMemo(() => {
     const list = (Array.isArray(requests) ? requests : []).filter((r) => !isTestRequest(r));
@@ -300,6 +359,31 @@ export default function AdminLogs() {
         </div>
       </div>
       <div className="mb-3 text-sm text-black/70">{loading ? 'Atualizando…' : 'Atualizado'}</div>
+
+      {/* Abas de assunto para detalhamento de solicitações */}
+      <div className="mb-4 flex flex-wrap gap-2 text-sm">
+        <button
+          type="button"
+          onClick={() => setActiveTab('todos')}
+          className={`px-3 py-1.5 rounded-full border ${activeTab === 'todos' ? 'bg-black text-white' : 'bg-white text-black/80'}`}
+        >
+          Todos os eventos
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('exclusao')}
+          className={`px-3 py-1.5 rounded-full border ${activeTab === 'exclusao' ? 'bg-black text-white' : 'bg-white text-black/80'}`}
+        >
+          Exclusão de Conta
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('alteracao')}
+          className={`px-3 py-1.5 rounded-full border ${activeTab === 'alteracao' ? 'bg-black text-white' : 'bg-white text-black/80'}`}
+        >
+          Alteração Cadastral
+        </button>
+      </div>
       <div className="p-4 bg-white rounded border border-black/10 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
@@ -409,7 +493,7 @@ export default function AdminLogs() {
         </div>
       )}
       <div className="space-y-2">
-        {rows.map((r) => (
+        {filteredRowsByTab.map((r) => (
           <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-xl">{r.icon}</span>

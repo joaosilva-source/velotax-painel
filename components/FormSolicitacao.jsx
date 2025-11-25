@@ -228,7 +228,35 @@ export default function FormSolicitacao({ registrarLog }) {
       await fetch('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_request', detail: { tipo: form.tipo, cpf: form.cpf, waMessageId, whatsappSent: !!(apiUrl && defaultJid) } })
+        body: JSON.stringify({
+          action: 'send_request',
+          detail: {
+            tipo: form.tipo,
+            cpf: form.cpf,
+            waMessageId,
+            whatsappSent: !!(apiUrl && defaultJid),
+            exclusao:
+              form.tipo === 'Exclusão de Conta'
+                ? {
+                    excluirVelotax: !!form.excluirVelotax,
+                    excluirCelcoin: !!form.excluirCelcoin,
+                    saldoZerado: !!form.saldoZerado,
+                    portabilidadePendente: !!form.portabilidadePendente,
+                    dividaIrpfQuitada: !!form.dividaIrpfQuitada,
+                  }
+                : undefined,
+            alteracao:
+              form.tipo === 'Alteração de Dados Cadastrais'
+                ? {
+                    infoTipo: form.infoTipo || '',
+                    dadoAntigo: form.dadoAntigo || '',
+                    dadoNovo: form.dadoNovo || '',
+                    fotosVerificadas: !!form.fotosVerificadas,
+                  }
+                : undefined,
+            observacoes: form.observacoes || '',
+          },
+        }),
       });
 
       // 4) Atualizar UI/Cache
