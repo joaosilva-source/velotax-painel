@@ -312,15 +312,103 @@ export default function Painel() {
                 )}
                 {searchResults && searchResults.length > 0 && !searchLoading && (
                   <div className="space-y-2 mt-3 max-h-64 overflow-auto">
-                    {searchResults.slice(0,8).map((r) => (
-                      <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                          <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+                    {searchResults.slice(0,8).map((r) => {
+                      const imgCount = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
+                      const videoCount = Array.isArray(r?.payload?.videos) ? r.payload.videos.length : 0;
+                      const total = imgCount + videoCount;
+                      return (
+                        <div key={r.id} className="p-3 bg-white rounded border border-black/10">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium flex items-center gap-2">
+                                <span>{r.tipo} — {r.cpf}</span>
+                                {total > 0 && (
+                                  <span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-xs">
+                                    Anexos: {imgCount > 0 ? `${imgCount} img` : ''}{imgCount > 0 && videoCount > 0 ? ' + ' : ''}{videoCount > 0 ? `${videoCount} vid` : ''}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
+                              {total > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Criar modal similar ao da página de erros/bugs
+                                    const modal = document.createElement('div');
+                                    modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                                    modal.innerHTML = `
+                                      <div class="bg-white rounded-xl max-w-4xl max-h-[90vh] w-full overflow-hidden">
+                                        <div class="p-4 border-b border-black/10 flex items-center justify-between">
+                                          <h3 class="text-lg font-semibold">Anexos - ${r.tipo}</h3>
+                                          <button type="button" class="text-black/60 hover:text-black text-2xl leading-none" onclick="this.closest('.fixed').remove()">×</button>
+                                        </div>
+                                        <div class="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+                                          <div class="space-y-4">
+                                            <div class="bg-black/5 p-3 rounded-lg">
+                                              <div class="text-sm space-y-1">
+                                                <div><strong>CPF:</strong> ${r.cpf || '—'}</div>
+                                                <div><strong>Agente:</strong> ${r.agente || '—'}</div>
+                                                <div><strong>Status:</strong> ${r.status || '—'}</div>
+                                                <div><strong>Descrição:</strong> ${r.payload?.descricao || '—'}</div>
+                                              </div>
+                                            </div>
+                                            ${r.payload?.previews?.length > 0 ? `
+                                              <div>
+                                                <h4 class="font-medium mb-2">Imagens (${r.payload.previews.length})</h4>
+                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                  ${r.payload.previews.map((preview, idx) => `
+                                                    <div class="relative group">
+                                                      <img src="${preview}" alt="imagem-${idx}" class="w-full h-32 object-cover rounded-lg border" style="cursor: pointer" onclick="window.open('${preview}', '_blank')" />
+                                                      <button type="button" onclick="window.open('${preview}', '_blank')" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Abrir</button>
+                                                    </div>
+                                                  `).join('')}
+                                                </div>
+                                              </div>
+                                            ` : ''}
+                                            ${r.payload?.videos?.length > 0 ? `
+                                              <div>
+                                                <h4 class="font-medium mb-2">Vídeos (${r.payload.videos.length})</h4>
+                                                <div class="space-y-2">
+                                                  ${r.payload.videos.map((video, idx) => `
+                                                    <div class="flex items-center gap-3 p-3 bg-black/5 rounded-lg">
+                                                      <div class="relative">
+                                                        ${r.payload.videoThumbnails?.[idx] ? `
+                                                          <img src="${r.payload.videoThumbnails[idx]}" alt="video-thumb-${idx}" class="w-20 h-14 object-cover rounded border" />
+                                                          <div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
+                                                            <span class="text-white text-xs">▶</span>
+                                                          </div>
+                                                        ` : ''}
+                                                      </div>
+                                                      <div class="flex-1">
+                                                        <div class="text-sm font-medium">${video.name}</div>
+                                                        <div class="text-xs text-black/60">${video.type} • ${Math.round(video.size / 1024 / 1024 * 100) / 100} MB</div>
+                                                      </div>
+                                                      <div class="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">Vídeo não disponível</div>
+                                                    </div>
+                                                  `).join('')}
+                                                </div>
+                                              </div>
+                                            ` : ''}
+                                            ${!r.payload?.previews?.length && !r.payload?.videos?.length ? '<div class="text-center text-black/60 py-8">Nenhum anexo disponível para esta solicitação.</div>' : ''}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    `;
+                                    document.body.appendChild(modal);
+                                  }}
+                                  className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                >
+                                  Ver anexos
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

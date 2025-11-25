@@ -38,6 +38,9 @@ function canonicalizeTypeKey(raw) {
   if (norm.includes('alteracao') && (norm.includes('dado') || norm.includes('cadastra'))) {
     return 'alteracao de dados cadastrais';
   }
+  if (norm.includes('erro') || norm.includes('bug')) {
+    return 'erro bug';
+  }
   return norm;
 }
 
@@ -48,6 +51,9 @@ function canonicalizeTypeLabel(raw) {
   }
   if (norm.includes('alteracao') && (norm.includes('dado') || norm.includes('cadastra'))) {
     return 'Alteração de Dados Cadastrais';
+  }
+  if (norm.includes('erro') || norm.includes('bug')) {
+    return 'Erro/Bug';
   }
   return raw || 'Outro';
 }
@@ -125,7 +131,360 @@ function formatItem(log) {
 
     return { icon: '📨', text: `${cpf} — ${tipo} enviado` };
   }
+  if (a === 'send_request' && tipo?.includes('Erro/Bug')) {
+    return { icon: '🐞', text: `${cpf} — ${tipo} enviado` };
+  }
   return { icon: '📝', text: a };
+}
+
+// Componente de cabeçalho ordenável
+const SortableHeader = ({ children, onSort, sortKey, currentSort }) => {
+  const isSorted = currentSort.key === sortKey;
+  const direction = isSorted ? currentSort.direction : null;
+  
+  return (
+    <th 
+      className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider cursor-pointer hover:bg-black/5 transition-colors"
+      onClick={() => onSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        <span>{children}</span>
+        {isSorted && (
+          <span className="text-blue-600">
+            {direction === 'asc' ? '↑' : '↓'}
+          </span>
+        )}
+        {!isSorted && (
+          <span className="text-black/30">↕</span>
+        )}
+      </div>
+    </th>
+  );
+};
+
+// Função para renderizar tabela específica para cada tipo
+function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
+  if (tipoKey === 'exclusao de conta') {
+    // Aplicar ordenação aos dados
+    let sortedData = [...data];
+    if (sortConfig.key) {
+      sortedData.sort((a, b) => {
+        const aDetail = a?.detail || {};
+        const bDetail = b?.detail || {};
+        
+        let aValue, bValue;
+        
+        switch (sortConfig.key) {
+          case 'createdAt':
+            aValue = new Date(a.createdAt || 0);
+            bValue = new Date(b.createdAt || 0);
+            break;
+          case 'cpf':
+            aValue = aDetail.cpf || '';
+            bValue = bDetail.cpf || '';
+            break;
+          case 'excluirVelotax':
+            aValue = aDetail.exclusao?.excluirVelotax ? 1 : 0;
+            bValue = bDetail.exclusao?.excluirVelotax ? 1 : 0;
+            break;
+          case 'excluirCelcoin':
+            aValue = aDetail.exclusao?.excluirCelcoin ? 1 : 0;
+            bValue = bDetail.exclusao?.excluirCelcoin ? 1 : 0;
+            break;
+          case 'saldoZerado':
+            aValue = aDetail.exclusao?.saldoZerado ? 1 : 0;
+            bValue = bDetail.exclusao?.saldoZerado ? 1 : 0;
+            break;
+          case 'portabilidadePendente':
+            aValue = aDetail.exclusao?.portabilidadePendente ? 1 : 0;
+            bValue = bDetail.exclusao?.portabilidadePendente ? 1 : 0;
+            break;
+          case 'dividaIrpfQuitada':
+            aValue = aDetail.exclusao?.dividaIrpfQuitada ? 1 : 0;
+            bValue = bDetail.exclusao?.dividaIrpfQuitada ? 1 : 0;
+            break;
+          default:
+            aValue = a.createdAt || '';
+            bValue = b.createdAt || '';
+        }
+        
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-black/10">
+          <thead className="bg-black/5">
+            <tr>
+              <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="excluirVelotax" currentSort={sortConfig}>Velotax</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="excluirCelcoin" currentSort={sortConfig}>Celcoin</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="saldoZerado" currentSort={sortConfig}>Saldo Zerado</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="portabilidadePendente" currentSort={sortConfig}>Portabilidade</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="dividaIrpfQuitada" currentSort={sortConfig}>IRPF Quitado</SortableHeader>
+              <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Observações</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-black/10">
+            {sortedData.map((r) => {
+              const d = r?.detail || {};
+              const ex = d.exclusao || {};
+              return (
+                <tr key={r.id} className="hover:bg-black/5">
+                  <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
+                  <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {ex.excluirVelotax ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {ex.excluirCelcoin ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {ex.saldoZerado ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {ex.portabilidadePendente ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {ex.dividaIrpfQuitada ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={d.observacoes || ''}>
+                    {d.observacoes || '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (tipoKey === 'alteracao de dados cadastrais') {
+    // Aplicar ordenação aos dados
+    let sortedData = [...data];
+    if (sortConfig.key) {
+      sortedData.sort((a, b) => {
+        const aDetail = a?.detail || {};
+        const bDetail = b?.detail || {};
+        
+        let aValue, bValue;
+        
+        switch (sortConfig.key) {
+          case 'createdAt':
+            aValue = new Date(a.createdAt || 0);
+            bValue = new Date(b.createdAt || 0);
+            break;
+          case 'cpf':
+            aValue = aDetail.cpf || '';
+            bValue = bDetail.cpf || '';
+            break;
+          case 'infoTipo':
+            aValue = aDetail.alteracao?.infoTipo || '';
+            bValue = bDetail.alteracao?.infoTipo || '';
+            break;
+          case 'dadoAntigo':
+            aValue = aDetail.alteracao?.dadoAntigo || '';
+            bValue = bDetail.alteracao?.dadoAntigo || '';
+            break;
+          case 'dadoNovo':
+            aValue = aDetail.alteracao?.dadoNovo || '';
+            bValue = bDetail.alteracao?.dadoNovo || '';
+            break;
+          case 'fotosVerificadas':
+            aValue = aDetail.alteracao?.fotosVerificadas ? 1 : 0;
+            bValue = bDetail.alteracao?.fotosVerificadas ? 1 : 0;
+            break;
+          default:
+            aValue = a.createdAt || '';
+            bValue = b.createdAt || '';
+        }
+        
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-black/10">
+          <thead className="bg-black/5">
+            <tr>
+              <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="infoTipo" currentSort={sortConfig}>Campo</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="dadoAntigo" currentSort={sortConfig}>Dado Antigo</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="dadoNovo" currentSort={sortConfig}>Dado Novo</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="fotosVerificadas" currentSort={sortConfig}>Fotos Verificadas</SortableHeader>
+              <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Observações</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-black/10">
+            {sortedData.map((r) => {
+              const d = r?.detail || {};
+              const al = d.alteracao || {};
+              return (
+                <tr key={r.id} className="hover:bg-black/5">
+                  <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
+                  <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-black-900">{al.infoTipo || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.dadoAntigo || ''}>
+                    {al.dadoAntigo || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.dadoNovo || ''}>
+                    {al.dadoNovo || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {al.fotosVerificadas ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={d.observacoes || ''}>
+                    {d.observacoes || '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (tipoKey === 'erro bug') {
+    // Aplicar ordenação aos dados
+    let sortedData = [...data];
+    if (sortConfig.key) {
+      sortedData.sort((a, b) => {
+        const aDetail = a?.detail || {};
+        const bDetail = b?.detail || {};
+        const aRequest = allRequests.find(req => req.waMessageId === aDetail.waMessageId);
+        const bRequest = allRequests.find(req => req.waMessageId === bDetail.waMessageId);
+        const aPayload = aRequest?.payload || {};
+        const bPayload = bRequest?.payload || {};
+        
+        let aValue, bValue;
+        
+        switch (sortConfig.key) {
+          case 'createdAt':
+            aValue = new Date(a.createdAt || 0);
+            bValue = new Date(b.createdAt || 0);
+            break;
+          case 'cpf':
+            aValue = aDetail.cpf || '';
+            bValue = bDetail.cpf || '';
+            break;
+          case 'tipo':
+            aValue = (aDetail.tipo || '').replace('Erro/Bug - ', '') || '';
+            bValue = (bDetail.tipo || '').replace('Erro/Bug - ', '') || '';
+            break;
+          case 'descricao':
+            aValue = aPayload.descricao || '';
+            bValue = bPayload.descricao || '';
+            break;
+          case 'attachments':
+            const aImgCount = Array.isArray(aPayload.previews) ? aPayload.previews.length : (Array.isArray(aPayload.imagens) ? aPayload.imagens.length : 0);
+            const aVideoCount = Array.isArray(aPayload.videos) ? aPayload.videos.length : 0;
+            const bImgCount = Array.isArray(bPayload.previews) ? bPayload.previews.length : (Array.isArray(bPayload.imagens) ? bPayload.imagens.length : 0);
+            const bVideoCount = Array.isArray(bPayload.videos) ? bPayload.videos.length : 0;
+            aValue = aImgCount + aVideoCount;
+            bValue = bImgCount + bVideoCount;
+            break;
+          default:
+            aValue = a.createdAt || '';
+            bValue = b.createdAt || '';
+        }
+        
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-black/10">
+          <thead className="bg-black/5">
+            <tr>
+              <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="tipo" currentSort={sortConfig}>Tipo</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="descricao" currentSort={sortConfig}>Descrição</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="attachments" currentSort={sortConfig}>Anexos</SortableHeader>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-black/10">
+            {sortedData.map((r) => {
+              const d = r?.detail || {};
+              // Buscar o request completo para obter os detalhes do erro/bug
+              const request = allRequests.find(req => req.waMessageId === d.waMessageId);
+              const payload = request?.payload || {};
+              const imgCount = Array.isArray(payload.previews) ? payload.previews.length : (Array.isArray(payload.imagens) ? payload.imagens.length : 0);
+              const videoCount = Array.isArray(payload.videos) ? payload.videos.length : 0;
+              const totalAttachments = imgCount + videoCount;
+              
+              return (
+                <tr key={r.id} className="hover:bg-black/5">
+                  <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
+                  <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-black-900">{(d.tipo || '').replace('Erro/Bug - ', '') || '—'}</td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={payload.descricao || 'Sem descrição'}>
+                    {payload.descricao?.substring(0, 100) || 'Sem descrição'}{payload.descricao?.length > 100 ? '...' : ''}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center">
+                    {totalAttachments > 0 ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-blue-600">📎</span>
+                        <span className="text-xs text-black-600">
+                          {imgCount > 0 && `${imgCount} img`}{imgCount > 0 && videoCount > 0 ? ' + ' : ''}{videoCount > 0 ? `${videoCount} vid` : ''}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-black/40">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Tabela padrão para outros tipos
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-black/10">
+        <thead className="bg-black/5">
+          <tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Data/Hora</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">CPF</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Tipo</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Detalhes</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-black/10">
+          {data.map((r) => {
+            const d = r?.detail || {};
+            return (
+              <tr key={r.id} className="hover:bg-black/5">
+                <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
+                <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                <td className="px-4 py-2 text-xs text-black-900">{d.tipo || '—'}</td>
+                <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={r.text || ''}>
+                  {r.text || '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default function AdminLogs() {
@@ -140,6 +499,7 @@ export default function AdminLogs() {
   const [dateTo, setDateTo] = useState('');
   const [hourDay, setHourDay] = useState(''); // seletor do dia para gráfico por hora
   const [activeTab, setActiveTab] = useState('todos'); // abas de resumo
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); // configuração de ordenação
 
   // Helpers: chips rápidos de período
   const dateToInputStr = (d) => {
@@ -168,6 +528,18 @@ export default function AdminLogs() {
       setDateFrom(dateToInputStr(first)); setDateTo(dateToInputStr(today));
       return;
     }
+  };
+
+  // Função para lidar com ordenação
+  const handleSort = (key) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.key === key) {
+        // Se já está ordenando pela mesma chave, inverte a direção
+        return { key, direction: prevConfig.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      // Senão, ordena pela nova chave em ordem ascendente
+      return { key, direction: 'asc' };
+    });
   };
 
   useEffect(() => {
@@ -235,6 +607,9 @@ export default function AdminLogs() {
     }
     if (activeTab === 'alteracao') {
       return rows.filter((r) => r.action === 'send_request' && r.tipoKey === 'alteracao de dados cadastrais');
+    }
+    if (activeTab === 'erros') {
+      return rows.filter((r) => r.action === 'send_request' && r.tipoKey === 'erro bug');
     }
     return rows;
   }, [rows, activeTab]);
@@ -383,6 +758,20 @@ export default function AdminLogs() {
         >
           Alteração Cadastral
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('erros')}
+          className={`px-3 py-1.5 rounded-full border ${activeTab === 'erros' ? 'bg-black text-white' : 'bg-white text-black/80'}`}
+        >
+          Erros/Bugs
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('consolidado')}
+          className={`px-3 py-1.5 rounded-full border ${activeTab === 'consolidado' ? 'bg-black text-white' : 'bg-white text-black/80'}`}
+        >
+          Dados Consolidados
+        </button>
       </div>
       <div className="p-4 bg-white rounded border border-black/10 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -493,15 +882,70 @@ export default function AdminLogs() {
         </div>
       )}
       <div className="space-y-2">
-        {filteredRowsByTab.map((r) => (
-          <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl">{r.icon}</span>
-              <span>{r.text}</span>
-            </div>
-            <div className="text-xs text-black/60">{r.createdAt}</div>
+        {activeTab === 'consolidado' ? (
+          // Aba consolidada - renderiza todas as solicitações em uma única tabela
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-black/10">
+              <thead className="bg-black/5">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Data/Hora</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">CPF</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Agente</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Detalhes</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-black/10">
+                {filteredRowsByTab.map((r) => {
+                  const d = r?.detail || {};
+                  const request = requests.find(req => req.waMessageId === d.waMessageId) || {};
+                  return (
+                    <tr key={r.id} className="hover:bg-black/5">
+                      <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
+                      <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-black-900">{d.tipo || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-black-900">{request.agente || '—'}</td>
+                      <td className="px-4 py-2 text-xs text-center">
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                          request.status === 'feito' ? 'bg-emerald-100 text-emerald-700' : 
+                          request.status === 'não feito' ? 'bg-red-100 text-red-700' : 
+                          'bg-slate-100 text-slate-700'
+                        }`}>
+                          {request.status || 'em aberto'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={r.text || ''}>
+                        {r.text || '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ))}
+        ) : (
+          // Abas específicas - renderiza tabela personalizada para cada tipo
+          (() => {
+            const tabData = filteredRowsByTab.filter(r => r.action === 'send_request');
+            const tabType = activeTab === 'exclusao' ? 'exclusao de conta' : 
+                           activeTab === 'alteracao' ? 'alteracao de dados cadastrais' : 
+                           activeTab === 'erros' ? 'erro bug' : null;
+            return tabType ? renderTableForType(tabType, tabData, requests, handleSort, sortConfig) : (
+              <div className="space-y-2">
+                {filteredRowsByTab.map((r) => (
+                  <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{r.icon}</span>
+                      <span>{r.text}</span>
+                    </div>
+                    <div className="text-xs text-black/60">{r.createdAt}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()
+        )}
       </div>
     </div>
   );
