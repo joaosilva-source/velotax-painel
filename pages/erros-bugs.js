@@ -314,8 +314,16 @@ export default function ErrosBugs() {
           <form onSubmit={enviar} className="card p-6 space-y-5" aria-busy={loading} aria-live="polite">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-black/80">Agente</label>
-                <input className="input" value={agente} onChange={(e) => setAgente(e.target.value)} required placeholder="Nome do agente" />
+                <label className="text-sm font-semibold text-black/90 mb-2 block">👤 Nome do Agente</label>
+                <input 
+                  className="input text-base font-medium py-3 border-2 border-blue-200 focus:border-blue-500 bg-blue-50/30" 
+                  value={agente} 
+                  onChange={(e) => setAgente(e.target.value)} 
+                  required 
+                  placeholder="Digite seu nome completo" 
+                  style={{ fontSize: '16px' }}
+                />
+                <div className="text-xs text-blue-600 mt-1 font-medium">Campo obrigatório</div>
               </div>
               <div>
                 <label className="text-sm text-black/80">CPF (opcional)</label>

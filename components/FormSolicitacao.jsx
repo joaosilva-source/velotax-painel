@@ -297,6 +297,23 @@ export default function FormSolicitacao({ registrarLog }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <label className="text-sm font-semibold text-black/90 mb-2 block">👤 Nome do Agente</label>
+          <div className="input-wrap">
+            <span className="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
+            </span>
+            <input 
+              className="input input-with-icon text-base font-medium py-3 border-2 border-blue-200 focus:border-blue-500 bg-blue-50/30" 
+              value={form.agente} 
+              onChange={(e) => atualizar("agente", e.target.value)} 
+              required 
+              placeholder="Digite seu nome completo" 
+              style={{ fontSize: '16px' }}
+            />
+          </div>
+          <div className="text-xs text-blue-600 mt-1 font-medium">Campo obrigatório para identificação</div>
+        </div>
+        <div>
           <label className="text-sm text-black/80">CPF</label>
           <div className="input-wrap">
             <span className="input-icon">
