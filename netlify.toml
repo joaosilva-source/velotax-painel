@@ -3,7 +3,16 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+  NEXT_TELEMETRY_DISABLED = "1"
+  NEXT_PUBLIC_API_URL = "https://whatsapp-api-y40p.onrender.com"
+  NEXT_PUBLIC_DEFAULT_JID = "120363400851545835@g.us"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
