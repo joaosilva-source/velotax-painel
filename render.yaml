@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: velotax-painel
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://whatsapp-api-y40p.onrender.com
+      - key: NEXT_PUBLIC_DEFAULT_JID
+        value: 120363400851545835@g.us
+      - key: DATABASE_URL
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true
