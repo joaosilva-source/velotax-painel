@@ -163,10 +163,17 @@ const SortableHeader = ({ children, onSort, sortKey, currentSort }) => {
 };
 
 // Função para renderizar tabela específica para cada tipo
-function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
+function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig, resolvedFilter) {
+  // Filtrar por status resolvido
+  let filteredData = data.filter(item => {
+    if (resolvedFilter === 'all') return true;
+    const isResolved = item?.detail?.status === 'feito' || item?.detail?.status === 'resolvido';
+    return resolvedFilter === 'resolved' ? isResolved : !isResolved;
+  });
+
   if (tipoKey === 'exclusao de conta') {
-    // Aplicar ordenação aos dados
-    let sortedData = [...data];
+    // Aplicar ordenação aos dados filtrados
+    let sortedData = [...filteredData];
     if (sortConfig.key) {
       sortedData.sort((a, b) => {
         const aDetail = a?.detail || {};
@@ -221,11 +228,14 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
             <tr>
               <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="status" currentSort={sortConfig}>Status</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="excluirVelotax" currentSort={sortConfig}>Velotax</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="excluirCelcoin" currentSort={sortConfig}>Celcoin</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="saldoZerado" currentSort={sortConfig}>Saldo Zerado</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="portabilidadePendente" currentSort={sortConfig}>Portabilidade</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="dividaIrpfQuitada" currentSort={sortConfig}>IRPF Quitado</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="chavePix" currentSort={sortConfig}>Chave PIX</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="contaBancaria" currentSort={sortConfig}>Conta Bancária</SortableHeader>
               <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Observações</th>
             </tr>
           </thead>
@@ -233,24 +243,38 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
             {sortedData.map((r) => {
               const d = r?.detail || {};
               const ex = d.exclusao || {};
+              const isResolved = d.status === 'feito' || d.status === 'resolvido';
               return (
-                <tr key={r.id} className="hover:bg-black/5">
+                <tr key={r.id} className={`hover:bg-black/5 ${isResolved ? 'bg-green-50' : 'bg-yellow-50'}`}>
                   <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
                   <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {ex.excluirVelotax ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      isResolved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {d.status || '—'}
+                    </span>
                   </td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {ex.excluirCelcoin ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {ex.excluirVelotax ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {ex.saldoZerado ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {ex.excluirCelcoin ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {ex.portabilidadePendente ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {ex.saldoZerado ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {ex.dividaIrpfQuitada ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {ex.portabilidadePendente ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {ex.dividaIrpfQuitada ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={ex.chavePix || ''}>
+                    {ex.chavePix || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={ex.contaBancaria || ''}>
+                    {ex.contaBancaria || '—'}
                   </td>
                   <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={d.observacoes || ''}>
                     {d.observacoes || '—'}
@@ -265,8 +289,8 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
   }
 
   if (tipoKey === 'alteracao de dados cadastrais') {
-    // Aplicar ordenação aos dados
-    let sortedData = [...data];
+    // Aplicar ordenação aos dados filtrados
+    let sortedData = [...filteredData];
     if (sortConfig.key) {
       sortedData.sort((a, b) => {
         const aDetail = a?.detail || {};
@@ -317,10 +341,15 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
             <tr>
               <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="status" currentSort={sortConfig}>Status</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="infoTipo" currentSort={sortConfig}>Campo</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="dadoAntigo" currentSort={sortConfig}>Dado Antigo</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="dadoNovo" currentSort={sortConfig}>Dado Novo</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="fotosVerificadas" currentSort={sortConfig}>Fotos Verificadas</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="chavePixAntiga" currentSort={sortConfig}>Chave PIX Antiga</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="chavePixNova" currentSort={sortConfig}>Chave PIX Nova</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="contaAntiga" currentSort={sortConfig}>Conta Antiga</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="contaNova" currentSort={sortConfig}>Conta Nova</SortableHeader>
               <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Observações</th>
             </tr>
           </thead>
@@ -328,10 +357,18 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
             {sortedData.map((r) => {
               const d = r?.detail || {};
               const al = d.alteracao || {};
+              const isResolved = d.status === 'feito' || d.status === 'resolvido';
               return (
-                <tr key={r.id} className="hover:bg-black/5">
+                <tr key={r.id} className={`hover:bg-black/5 ${isResolved ? 'bg-green-50' : 'bg-yellow-50'}`}>
                   <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
                   <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                  <td className="px-4 py-2 text-xs">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      isResolved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {d.status || '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-xs text-black-900">{al.infoTipo || '—'}</td>
                   <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.dadoAntigo || ''}>
                     {al.dadoAntigo || '—'}
@@ -339,8 +376,20 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
                   <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.dadoNovo || ''}>
                     {al.dadoNovo || '—'}
                   </td>
-                  <td className="px-4 py-2 text-xs text-center">
-                    {al.fotosVerificadas ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>}
+                  <td className="px-4 py-2 text-xs text-center font-bold">
+                    {al.fotosVerificadas ? <span className="text-green-600 text-lg">X</span> : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.chavePixAntiga || ''}>
+                    {al.chavePixAntiga || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.chavePixNova || ''}>
+                    {al.chavePixNova || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.contaAntiga || ''}>
+                    {al.contaAntiga || '—'}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={al.contaNova || ''}>
+                    {al.contaNova || '—'}
                   </td>
                   <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={d.observacoes || ''}>
                     {d.observacoes || '—'}
@@ -355,8 +404,8 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
   }
 
   if (tipoKey === 'erro bug') {
-    // Aplicar ordenação aos dados
-    let sortedData = [...data];
+    // Aplicar ordenação aos dados filtrados
+    let sortedData = [...filteredData];
     if (sortConfig.key) {
       sortedData.sort((a, b) => {
         const aDetail = a?.detail || {};
@@ -411,9 +460,12 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
             <tr>
               <SortableHeader onSort={onSort} sortKey="createdAt" currentSort={sortConfig}>Data/Hora</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="cpf" currentSort={sortConfig}>CPF</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="status" currentSort={sortConfig}>Status</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="tipo" currentSort={sortConfig}>Tipo</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="descricao" currentSort={sortConfig}>Descrição</SortableHeader>
               <SortableHeader onSort={onSort} sortKey="attachments" currentSort={sortConfig}>Anexos</SortableHeader>
+              <SortableHeader onSort={onSort} sortKey="agente" currentSort={sortConfig}>Agente</SortableHeader>
+              <th className="px-4 py-2 text-left text-xs font-medium text-black/70 uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-black/10">
@@ -425,11 +477,19 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
               const imgCount = Array.isArray(payload.previews) ? payload.previews.length : (Array.isArray(payload.imagens) ? payload.imagens.length : 0);
               const videoCount = Array.isArray(payload.videos) ? payload.videos.length : 0;
               const totalAttachments = imgCount + videoCount;
+              const isResolved = d.status === 'feito' || d.status === 'resolvido';
               
               return (
-                <tr key={r.id} className="hover:bg-black/5">
+                <tr key={r.id} className={`hover:bg-black/5 ${isResolved ? 'bg-green-50' : 'bg-yellow-50'}`}>
                   <td className="px-4 py-2 text-xs text-black-900">{r.createdAt}</td>
                   <td className="px-4 py-2 text-xs font-medium text-black-900">{d.cpf || '—'}</td>
+                  <td className="px-4 py-2 text-xs">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      isResolved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {d.status || '—'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2 text-xs text-black-900">{(d.tipo || '').replace('Erro/Bug - ', '') || '—'}</td>
                   <td className="px-4 py-2 text-xs text-black-600 max-w-xs truncate" title={payload.descricao || 'Sem descrição'}>
                     {payload.descricao?.substring(0, 100) || 'Sem descrição'}{payload.descricao?.length > 100 ? '...' : ''}
@@ -443,7 +503,82 @@ function renderTableForType(tipoKey, data, allRequests, onSort, sortConfig) {
                         </span>
                       </span>
                     ) : (
-                      <span className="text-black/40">—</span>
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-xs text-black-900">{d.agente || '—'}</td>
+                  <td className="px-4 py-2 text-xs">
+                    {totalAttachments > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Criar modal para visualizar anexos
+                          const modal = document.createElement('div');
+                          modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
+                          modal.innerHTML = `
+                            <div class="bg-white rounded-xl max-w-4xl max-h-[90vh] w-full overflow-hidden">
+                              <div class="p-4 border-b border-black/10 flex items-center justify-between">
+                                <h3 class="text-lg font-semibold">Anexos - ${d.tipo}</h3>
+                                <button type="button" class="text-black/60 hover:text-black text-2xl leading-none" onclick="this.closest('.fixed').remove()">×</button>
+                              </div>
+                              <div class="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+                                <div class="space-y-4">
+                                  <div class="bg-black/5 p-3 rounded-lg">
+                                    <div class="text-sm space-y-1">
+                                      <div><strong>CPF:</strong> ${d.cpf || '—'}</div>
+                                      <div><strong>Agente:</strong> ${d.agente || '—'}</div>
+                                      <div><strong>Status:</strong> ${d.status || '—'}</div>
+                                      <div><strong>Descrição:</strong> ${payload.descricao || '—'}</div>
+                                    </div>
+                                  </div>
+                                  ${payload.previews?.length > 0 ? `
+                                    <div>
+                                      <h4 class="font-medium mb-2">Imagens (${payload.previews.length})</h4>
+                                      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        ${payload.previews.map((preview, idx) => `
+                                          <div class="relative group">
+                                            <img src="${preview}" alt="imagem-${idx}" class="w-full h-32 object-cover rounded-lg border" style="cursor: pointer" onclick="window.open('${preview}', '_blank')" />
+                                            <button type="button" onclick="window.open('${preview}', '_blank')" class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Abrir</button>
+                                          </div>
+                                        `).join('')}
+                                      </div>
+                                    </div>
+                                  ` : ''}
+                                  ${payload.videos?.length > 0 ? `
+                                    <div>
+                                      <h4 class="font-medium mb-2">Vídeos (${payload.videos.length})</h4>
+                                      <div class="space-y-2">
+                                        ${payload.videos.map((video, idx) => `
+                                          <div class="flex items-center gap-3 p-3 bg-black/5 rounded-lg">
+                                            <div class="relative">
+                                              ${payload.videoThumbnails?.[idx] ? `
+                                                <img src="${payload.videoThumbnails[idx]}" alt="video-thumb-${idx}" class="w-20 h-14 object-cover rounded border" />
+                                                <div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
+                                                  <span class="text-white text-xs">▶</span>
+                                                </div>
+                                              ` : ''}
+                                            </div>
+                                            <div class="flex-1">
+                                              <div class="text-sm font-medium">${video.name}</div>
+                                              <div class="text-xs text-black/60">${video.type} • ${Math.round(video.size / 1024 / 1024 * 100) / 100} MB</div>
+                                            </div>
+                                            <div class="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded">Vídeo não disponível</div>
+                                          </div>
+                                        `).join('')}
+                                      </div>
+                                    </div>
+                                  ` : ''}
+                                  ${!payload.previews?.length && !payload.videos?.length ? '<div class="text-center text-black/60 py-8">Nenhum anexo disponível para esta solicitação.</div>' : ''}
+                                </div>
+                              </div>
+                            </div>
+                          `;
+                          document.body.appendChild(modal);
+                        }}
+                        className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                      >
+                        Ver anexos
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -500,6 +635,7 @@ export default function AdminLogs() {
   const [hourDay, setHourDay] = useState(''); // seletor do dia para gráfico por hora
   const [activeTab, setActiveTab] = useState('todos'); // abas de resumo
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); // configuração de ordenação
+  const [resolvedFilter, setResolvedFilter] = useState('all'); // filtro: all, resolved, pending
 
   // Helpers: chips rápidos de período
   const dateToInputStr = (d) => {
@@ -773,6 +909,41 @@ export default function AdminLogs() {
           Dados Consolidados
         </button>
       </div>
+      {/* Filtro de Status Resolvidos */}
+      <div className="p-4 bg-white rounded border border-black/10 mb-6">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-black/70">Filtrar por Status:</span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setResolvedFilter('all')}
+              className={`px-3 py-1.5 rounded-full border text-sm ${
+                resolvedFilter === 'all' ? 'bg-black text-white' : 'bg-white text-black/80'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setResolvedFilter('resolved')}
+              className={`px-3 py-1.5 rounded-full border text-sm ${
+                resolvedFilter === 'resolved' ? 'bg-green-600 text-white' : 'bg-white text-black/80'
+              }`}
+            >
+              ✅ Resolvidos
+            </button>
+            <button
+              type="button"
+              onClick={() => setResolvedFilter('pending')}
+              className={`px-3 py-1.5 rounded-full border text-sm ${
+                resolvedFilter === 'pending' ? 'bg-yellow-600 text-white' : 'bg-white text-black/80'
+              }`}
+            >
+              ⏳ Pendentes
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="p-4 bg-white rounded border border-black/10 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
@@ -931,7 +1102,7 @@ export default function AdminLogs() {
             const tabType = activeTab === 'exclusao' ? 'exclusao de conta' : 
                            activeTab === 'alteracao' ? 'alteracao de dados cadastrais' : 
                            activeTab === 'erros' ? 'erro bug' : null;
-            return tabType ? renderTableForType(tabType, tabData, requests, handleSort, sortConfig) : (
+            return tabType ? renderTableForType(tabType, tabData, requests, handleSort, sortConfig, resolvedFilter) : (
               <div className="space-y-2">
                 {filteredRowsByTab.map((r) => (
                   <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
