@@ -8,11 +8,23 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NEXT_PUBLIC_API_URL = "https://whatsapp-api-y40p.onrender.com"
   NEXT_PUBLIC_DEFAULT_JID = "120363400851545835@g.us"
+  NODE_OPTIONS = "--max-old-space-size=2048"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[[edge_functions]]
+  path = "/api/*"
+  function = "api"
 
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/_next/static/*"
+  to = "/_next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.html"
+  to = "/:splat.html"
   status = 200
