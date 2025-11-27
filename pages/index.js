@@ -65,7 +65,7 @@ export default function Home() {
             </a>
 
             <a
-              href="/seguro_divida_zero_guia.html"
+              href="/guides/seguro_divida_zero_guia.html"
               target="_blank"
               rel="noopener"
               className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
@@ -81,7 +81,7 @@ export default function Home() {
             </a>
 
             <a
-              href="/clube_velotax_guia.html"
+              href="/guides/clube_velotax_guia.html"
               target="_blank"
               rel="noopener"
               className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"

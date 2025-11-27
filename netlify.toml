@@ -8,7 +8,8 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NEXT_PUBLIC_API_URL = "https://whatsapp-api-y40p.onrender.com"
   NEXT_PUBLIC_DEFAULT_JID = "120363400851545835@g.us"
-  NODE_OPTIONS = "--max-old-space-size=2048"
+  NODE_OPTIONS = "--max-old-space-size=1536"
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
 
 [[edge_functions]]
   path = "/api/*"
@@ -22,6 +23,11 @@
 [[redirects]]
   from = "/_next/static/*"
   to = "/_next/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/guides/*"
+  to = "/guides/:splat"
   status = 200
 
 [[redirects]]
