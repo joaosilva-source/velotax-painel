@@ -9,7 +9,9 @@
   NEXT_PUBLIC_API_URL = "https://whatsapp-api-y40p.onrender.com"
   NEXT_PUBLIC_DEFAULT_JID = "120363400851545835@g.us"
   NODE_OPTIONS = "--max-old-space-size=1536"
-  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 [[edge_functions]]
   path = "/api/*"
