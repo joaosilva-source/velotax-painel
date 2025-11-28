@@ -6,7 +6,12 @@
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack && node -e \"require('fs').mkdirSync('.next',{recursive:true});require('fs').writeFileSync('.next/lock','')\"",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "debug:api": "node scripts/debug-api.js",
+    "logs:recover": "node scripts/recover-logs.js recover",
+    "logs:import": "node scripts/import-requests.js import",
+    "logs:backup": "node scripts/import-requests.js backup",
+    "logs:full": "node scripts/import-requests.js full"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",

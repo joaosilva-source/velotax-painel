@@ -18,8 +18,8 @@ export default function Home() {
             <h1 className="text-3xl font-semibold tracking-tight text-[#000058]">Atendimento Velotax</h1>
           </div>
 
-          {/* 5 CARDS NA PARTE DE BAIXO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* 3 CARDS NA PARTE DE BAIXO */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <a
               href="/painel"
               className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
@@ -62,38 +62,6 @@ export default function Home() {
                 Acesso à página inicial do nosso hub, Velobot, artigos e muito mais.
               </p>
               <div className="mt-auto text-xs text-emerald-700 font-medium">Ir para o Velohub ↗</div>
-            </a>
-
-            <a
-              href="/guides/seguro_divida_zero_guia.html"
-              target="_blank"
-              rel="noopener"
-              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-600" />
-                <h2 className="text-lg font-semibold text-[#000058]">Seguro Dívida Zero</h2>
-              </div>
-              <p className="text-sm text-black/70">
-                Guia completo do seguro de proteção financeira contra perda de renda e incapacidade.
-              </p>
-              <div className="mt-auto text-xs text-blue-700 font-medium">Abrir guia ↗</div>
-            </a>
-
-            <a
-              href="/guides/clube_velotax_guia.html"
-              target="_blank"
-              rel="noopener"
-              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-purple-500 to-pink-600" />
-                <h2 className="text-lg font-semibold text-[#000058]">Clube Velotax</h2>
-              </div>
-              <p className="text-sm text-black/70">
-                Economia no dia a dia com cupons de desconto e sorteios exclusivos para assinantes.
-              </p>
-              <div className="mt-auto text-xs text-purple-700 font-medium">Abrir guia ↗</div>
             </a>
           </div>
 
