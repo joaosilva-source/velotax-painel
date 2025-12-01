@@ -1,38 +1,12 @@
 [build]
-  command = "npm run build"
-  publish = ".next"
+  # Não rodar Next.js, só publicar arquivos estáticos
+  command = "echo 'Static Velotax Velohub notice'"
+  publish = "public"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   NEXT_TELEMETRY_DISABLED = "1"
-  NEXT_PUBLIC_API_URL = "https://whatsapp-api-y40p.onrender.com"
-  NEXT_PUBLIC_DEFAULT_JID = "120363400851545835@g.us"
-  NODE_OPTIONS = "--max-old-space-size=1536"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Sem plugins, sem funções, apenas arquivos estáticos da pasta public
 
-[[edge_functions]]
-  path = "/api/*"
-  function = "api"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/_next/static/*"
-  to = "/_next/static/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/guides/*"
-  to = "/guides/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*.html"
-  to = "/:splat.html"
-  status = 200
