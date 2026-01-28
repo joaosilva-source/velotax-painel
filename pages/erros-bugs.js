@@ -166,6 +166,13 @@ export default function ErrosBugs() {
         const d = await resp.json().catch(() => ({}));
         waMessageId = d?.messageId || d?.key?.id || null;
         if (Array.isArray(d?.messageIds)) messageIdsArr = d.messageIds;
+        if (!resp.ok) {
+          const txt = d?.error || JSON.stringify(d || {});
+          const isDisconnected = /WhatsApp desconectado|desconectado/i.test(txt);
+          setMsg(isDisconnected ? 'WhatsApp está reconectando. Aguarde alguns segundos e tente enviar novamente.' : 'Erro ao enviar: ' + txt);
+          setLoading(false);
+          return;
+        }
       }
 
       await fetch('/api/requests', {

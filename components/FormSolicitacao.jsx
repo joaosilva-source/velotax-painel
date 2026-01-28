@@ -292,8 +292,12 @@ export default function FormSolicitacao({ registrarLog }) {
       } else {
         const txt = await res.text();
         registrarLog("❌ Erro da API: " + txt);
-        toast.error("Erro ao enviar: " + txt);
-        notifyError('Falha ao enviar solicitação', txt || 'Erro desconhecido da API');
+        const isDisconnected = /WhatsApp desconectado|desconectado/i.test(txt);
+        const msg = isDisconnected
+          ? "WhatsApp está reconectando. Aguarde alguns segundos e tente enviar novamente."
+          : "Erro ao enviar: " + txt;
+        toast.error(msg);
+        notifyError(isDisconnected ? 'WhatsApp reconectando' : 'Falha ao enviar solicitação', isDisconnected ? msg : (txt || 'Erro desconhecido da API'));
       }
 
       const wasSentOK = !!(apiUrl && defaultJid && res && res.ok);
