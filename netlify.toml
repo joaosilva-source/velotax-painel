@@ -1,12 +1,12 @@
 [build]
-  # Não rodar Next.js, só publicar arquivos estáticos
-  command = "echo 'Static Velotax Velohub notice'"
-  publish = "public"
+  command = "npm run build"
+  # Plugin @netlify/plugin-nextjs usa o output do next build; não definir publish
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   NEXT_TELEMETRY_DISABLED = "1"
+  NODE_OPTIONS = "--openssl-legacy-provider"
 
-# Sem plugins, sem funções, apenas arquivos estáticos da pasta public
+# Next.js: o plugin da Netlify detecta .next e faz o deploy
 
