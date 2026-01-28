@@ -5,7 +5,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 Env vars (.env.local):
 
 ```
-NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+NEXT_PUBLIC_API_URL=https://whatsapp-api-6152.onrender.com
 NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
 ```
 

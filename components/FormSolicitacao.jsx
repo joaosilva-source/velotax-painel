@@ -290,7 +290,11 @@ export default function FormSolicitacao({ registrarLog }) {
         registrarLog("✅ Enviado com sucesso");
         toast.success("Solicitação enviada");
       } else {
-        const txt = await res.text();
+        let txt = await res.text();
+        try {
+          const j = JSON.parse(txt);
+          if (j && typeof j.error === 'string') txt = j.error;
+        } catch {}
         registrarLog("❌ Erro da API: " + txt);
         const isDisconnected = /WhatsApp desconectado|desconectado/i.test(txt);
         const msg = isDisconnected

@@ -3,6 +3,9 @@ import prisma from '@/lib/prisma';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!process.env.DATABASE_URL) {
+    return res.status(503).json({ success: false, error: 'DATABASE_URL não configurado', hint: 'Configure no Netlify (Site settings → Environment variables).' });
+  }
   const { waMessageId, reactor, status: inputStatus, reaction } = req.body || {};
   if (!waMessageId) return res.status(400).json({ error: 'waMessageId é obrigatório' });
 

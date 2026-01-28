@@ -23,7 +23,7 @@ A forma mais fácil e rápida para projetos Next.js.
    - Importe o projeto do GitHub
    - Configure as variáveis de ambiente:
      ```
-     NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+     NEXT_PUBLIC_API_URL=https://whatsapp-api-6152.onrender.com
      NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
      DATABASE_URL=postgresql://usuario:senha@host:porta/database
      ```
@@ -46,7 +46,7 @@ Alternativa excelente com suporte a banco de dados.
        startCommand: npm start
        envVars:
          - key: NEXT_PUBLIC_API_URL
-           value: https://whatsapp-api-y40p.onrender.com
+           value: https://whatsapp-api-6152.onrender.com
          - key: NEXT_PUBLIC_DEFAULT_JID
            value: 120363400851545835@g.us
          - key: DATABASE_URL
@@ -111,7 +111,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+      - NEXT_PUBLIC_API_URL=https://whatsapp-api-6152.onrender.com
       - NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
       - DATABASE_URL=postgresql://postgres:senha@db:5432/velotax
     depends_on:
@@ -156,7 +156,7 @@ Simples e rápido.
 
 3. **Configurar Variáveis**
    ```bash
-   railway variables set NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+   railway variables set NEXT_PUBLIC_API_URL=https://whatsapp-api-6152.onrender.com
    railway variables set NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
    ```
 
@@ -165,7 +165,7 @@ Simples e rápido.
 ### 1. Variáveis de Ambiente
 Criar `.env.local`:
 ```env
-NEXT_PUBLIC_API_URL=https://whatsapp-api-y40p.onrender.com
+NEXT_PUBLIC_API_URL=https://whatsapp-api-6152.onrender.com
 NEXT_PUBLIC_DEFAULT_JID=120363400851545835@g.us
 DATABASE_URL=postgresql://usuario:senha@host:porta/database
 ```
