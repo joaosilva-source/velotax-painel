@@ -157,7 +157,10 @@ export default function ErrosBugs() {
             jid: defaultJid,
             mensagem: montarLegenda(),
             imagens,
-            videos
+            videos,
+            cpf: cpf || null,
+            solicitacao: `Erro/Bug - ${tipo}`,
+            agente: agente || null
           })
         });
         const d = await resp.json().catch(() => ({}));

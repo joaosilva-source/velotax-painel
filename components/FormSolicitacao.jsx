@@ -16,6 +16,11 @@ export default function FormSolicitacao({ registrarLog }) {
     saldoZerado: false,
     portabilidadePendente: false,
     dividaIrpfQuitada: false,
+    semDebitoAberto: false,
+    n2Ouvidora: false,
+    nomeCliente: "",
+    dataContratacao: "",
+    valor: "",
     observacoes: "",
   });
   const [loading, setLoading] = useState(false);
@@ -128,9 +133,11 @@ export default function FormSolicitacao({ registrarLog }) {
       "Exclusão de Chave PIX": "Exclusão de Chave PIX",
       "Alteração de Dados Cadastrais": "Alteração de Dados Cadastrais",
       "Reativação de Conta": "Reativação de Conta",
+      "Cancelamento": "Cancelamento",
+      "Aumento de Limite Pix": "Aumento de Limite Pix",
     };
     const tipoCanon = typeMap[form.tipo] || toTitleCase(String(form.tipo || ''));
-    const cpfNorm = String(form.cpf || '').replace(/\s+/g, ' ').trim();
+    const cpfNorm = String(form.cpf || '').replace(/\D/g, '');
     let msg = `*Nova Solicitação Técnica - ${tipoCanon}*\n\n`;
     msg += `Agente: ${form.agente}\nCPF: ${cpfNorm}\n\n`;
 
@@ -143,7 +150,19 @@ export default function FormSolicitacao({ registrarLog }) {
       msg += `Observações: ${form.observacoes || "—"}\n`;
     } else if (form.tipo === "Alteração de Dados Cadastrais") {
       msg += `Tipo de informação: ${form.infoTipo}\nDado antigo: ${form.dadoAntigo}\nDado novo: ${form.dadoNovo}\nFotos verificadas: ${simNao(form.fotosVerificadas)}\nObservações: ${form.observacoes || "—"}\n`;
-    } else { // Exclusão de Chave PIX e outros
+    } else if (form.tipo === "Exclusão de Chave PIX") {
+      msg += `Sem Débito em aberto: ${simNao(form.semDebitoAberto)}\n`;
+      msg += `N2 - Ouvidora: ${simNao(form.n2Ouvidora)}\n`;
+      msg += `Observações: ${form.observacoes || "—"}\n`;
+    } else if (form.tipo === "Cancelamento") {
+      msg += `Nome do Cliente: ${form.nomeCliente || "—"}\n`;
+      msg += `Data da Contratação: ${form.dataContratacao || "—"}\n`;
+      msg += `Valor: ${form.valor || "—"}\n`;
+      msg += `Observações: ${form.observacoes || "—"}\n`;
+    } else if (form.tipo === "Aumento de Limite Pix") {
+      msg += `Valor: ${form.valor || "—"}\n`;
+      msg += `Observações: ${form.observacoes || "—"}\n`;
+    } else {
       msg += `Observações: ${form.observacoes || "—"}\n`;
     }
     return msg;
@@ -155,6 +174,10 @@ export default function FormSolicitacao({ registrarLog }) {
     if (digits.length !== 11) {
       setCpfError('CPF inválido. Digite os 11 dígitos.');
       toast.error('CPF inválido. Digite os 11 dígitos.');
+      return;
+    }
+    if (form.tipo === "Exclusão de Chave PIX" && !form.semDebitoAberto && !form.n2Ouvidora) {
+      toast.error('Para Exclusão de Chave PIX, é obrigatório selecionar pelo menos uma opção: "Sem Débito em aberto" ou "N2 - Ouvidora"');
       return;
     }
     setLoading(true);
@@ -340,9 +363,11 @@ export default function FormSolicitacao({ registrarLog }) {
           </span>
           <select className="input input-with-icon" value={form.tipo} onChange={(e) => atualizar("tipo", e.target.value)}>
           <option>Alteração de Dados Cadastrais</option>
+          <option>Aumento de Limite Pix</option>
           <option>Exclusão de Chave PIX</option>
           <option>Exclusão de Conta</option>
           <option>Reativação de Conta</option>
+          <option>Cancelamento</option>
           </select>
         </div>
       </div>
@@ -386,6 +411,49 @@ export default function FormSolicitacao({ registrarLog }) {
           </div>
 
           {/* Anexos removidos nesta tela */}
+        </div>
+      )}
+
+      {form.tipo === "Exclusão de Chave PIX" && (
+        <div className="bg-white p-4 rounded-lg mt-2 border border-black/10">
+          <p className="text-sm text-black/70 mb-3">* Selecione pelo menos uma opção:</p>
+          <label className="flex items-center gap-2">
+            <input className="check-anim" type="checkbox" checked={form.semDebitoAberto} onChange={(e) => atualizar("semDebitoAberto", e.target.checked)} />
+            Sem Débito em aberto
+          </label>
+          <label className="flex items-center gap-2 mt-2">
+            <input className="check-anim" type="checkbox" checked={form.n2Ouvidora} onChange={(e) => atualizar("n2Ouvidora", e.target.checked)} />
+            N2 - Ouvidora
+          </label>
+        </div>
+      )}
+
+      {form.tipo === "Aumento de Limite Pix" && (
+        <div className="bg-white p-4 rounded-lg mt-2 border border-black/10">
+          <p className="text-sm text-black/70 mb-3">CPF preenchido no campo acima. Informe o valor desejado:</p>
+          <div>
+            <label className="text-sm text-black/80">Valor</label>
+            <input className="input" type="text" placeholder="R$ 0,00" value={form.valor} onChange={(e) => atualizar("valor", e.target.value)} required />
+          </div>
+        </div>
+      )}
+
+      {form.tipo === "Cancelamento" && (
+        <div className="bg-white p-4 rounded-lg mt-2 border border-black/10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm text-black/80">Nome do Cliente</label>
+              <input className="input" type="text" placeholder="Nome completo do cliente" value={form.nomeCliente} onChange={(e) => atualizar("nomeCliente", e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm text-black/80">Data da Contratação</label>
+              <input className="input" type="date" value={form.dataContratacao} onChange={(e) => atualizar("dataContratacao", e.target.value)} required />
+            </div>
+            <div>
+              <label className="text-sm text-black/80">Valor</label>
+              <input className="input" type="text" placeholder="R$ 0,00" value={form.valor} onChange={(e) => atualizar("valor", e.target.value)} required />
+            </div>
+          </div>
         </div>
       )}
 
