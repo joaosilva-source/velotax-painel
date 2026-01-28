@@ -10,3 +10,9 @@
 
 # Next.js: o plugin da Netlify detecta .next e faz o deploy
 
+# Antigo index.html estático ("movido para Velohub") foi removido; redirecionar para a home
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 302
+
