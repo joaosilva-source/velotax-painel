@@ -20,7 +20,7 @@ export default function Painel() {
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState('https://whatsapp-api-y40p.onrender.com');
+  const [backendUrl, setBackendUrl] = useState(() => (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, ''));
   const [replies, setReplies] = useState([]);
   const [myAgent, setMyAgent] = useState('');
   const norm = (s='') => String(s).toLowerCase().trim().replace(/\s+/g,' ');
@@ -47,7 +47,6 @@ export default function Painel() {
   };
 
   useEffect(() => {
-    try { if (typeof window !== 'undefined' && 'Notification' in window) Notification.requestPermission().catch(()=>{}); } catch {}
     loadStats();
     const id = setInterval(loadStats, 15000);
     return () => clearInterval(id);
@@ -62,7 +61,8 @@ export default function Painel() {
 
   useEffect(() => {
     try {
-      setBackendUrl((v) => (v ? v.replace(/\/$/, '') : 'https://whatsapp-api-y40p.onrender.com'));
+      const url = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, '');
+      setBackendUrl((v) => v || url);
     } catch {}
   }, []);
 

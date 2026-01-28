@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        value: https://whatsapp-api-y40p.onrender.com
+        value: https://whatsapp-api-6152.onrender.com
       - key: NEXT_PUBLIC_DEFAULT_JID
         value: 120363400851545835@g.us
       - key: DATABASE_URL

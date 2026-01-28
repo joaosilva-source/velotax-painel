@@ -51,7 +51,7 @@ export default function AdminErros() {
     }
     setEnviando(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, '');
       const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
       const msg = `Relato de Erro\nCategoria: ${categoria}\nAgente: ${agente || '—'}\nCPF: ${cpf || '—'}\nDescrição: ${descricao}\nImagens: ${imgs.length}`;
 
