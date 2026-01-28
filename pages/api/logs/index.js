@@ -6,6 +6,14 @@ let cache = { data: null, ts: 0 };
 const CACHE_MS = 10 * 1000; // 10s, evitar defasagem
 
 export default async function handler(req, res) {
+  if (!process.env.DATABASE_URL) {
+    if (req.method === 'GET') return res.status(200).json([]);
+    return res.status(503).json({
+      error: 'DATABASE_URL não configurado',
+      hint: 'Configure DATABASE_URL nas variáveis de ambiente (Netlify: Site settings → Environment variables).'
+    });
+  }
+
   if (req.method === 'POST') {
     try {
       const { userEmail, action, detail, ip } = req.body || {};
