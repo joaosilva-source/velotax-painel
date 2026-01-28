@@ -242,7 +242,7 @@ export default function FormSolicitacao({ registrarLog }) {
           agente: agenteNorm || form.agente,
           cpf: form.cpf,
           tipo: form.tipo,
-          payload: { ...form },
+          payload: { ...form, messageIds: waMessageId ? [waMessageId] : [] },
           agentContact: defaultJid || null,
           waMessageId,
         })

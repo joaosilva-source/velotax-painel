@@ -33,7 +33,10 @@ export default async function handler(req, res) {
         if (ids.includes(waMessageId)) { reqRow = r; break; }
       }
     }
-    if (!reqRow) return res.status(404).json({ error: 'request não encontrado' });
+    if (!reqRow) {
+      // 200 para a API não logar como erro; mensagem pode ter sido enviada por outro canal
+      return res.status(200).json({ success: false, error: 'request não encontrado' });
+    }
 
     const updated = await prisma.request.update({
       where: { id: reqRow.id },
@@ -50,8 +53,9 @@ export default async function handler(req, res) {
       });
     } catch {}
 
-    return res.json(updated);
+    return res.json({ success: true, ...updated });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('[api/requests/auto-status]', e);
+    return res.status(500).json({ success: false, error: e.message });
   }
 }

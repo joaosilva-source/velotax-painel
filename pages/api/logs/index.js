@@ -24,7 +24,8 @@ export default async function handler(req, res) {
       cache = { data: null, ts: 0 };
       return res.status(201).json(created);
     } catch (e) {
-      return res.status(500).json({ error: e.message });
+      console.error('[api/logs POST]', e);
+      return res.status(503).json({ error: e.message });
     }
   }
 
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
       if (!noCache) cache = { data: list, ts: now };
       return res.json(list);
     } catch (e) {
-      // Evitar quebrar a UI: devolve lista vazia
+      console.error('[api/logs GET]', e);
       return res.status(200).json([]);
     }
   }

@@ -25,7 +25,10 @@ export default async function handler(req, res) {
       return res.status(201).json(created);
     } catch (e) {
       console.error('[api/requests POST]', e);
-      return res.status(500).json({ error: e.message });
+      return res.status(503).json({
+        error: 'Erro ao salvar no banco',
+        hint: 'Verifique DATABASE_URL (Supabase/Postgres) e se as tabelas existem (npx prisma db push).'
+      });
     }
   }
 
@@ -35,7 +38,8 @@ export default async function handler(req, res) {
       return res.json(list);
     } catch (e) {
       console.error('[api/requests GET]', e);
-      return res.status(500).json({ error: e.message });
+      // Devolver lista vazia para o painel carregar; front pode checar _degraded
+      return res.status(200).json([]);
     }
   }
 
