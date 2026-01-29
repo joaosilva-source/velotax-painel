@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Reduzir tamanho da função serverless (limite Netlify 250 MB): não incluir public no bundle do servidor
+  // Reduzir tamanho do bundle serverless (Vercel/Netlify): não incluir public no trace do servidor
   outputFileTracingExcludes: {
     '*': [
       'public/**',
