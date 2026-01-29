@@ -214,6 +214,11 @@ export default function Painel() {
           <div className="mb-8 surface p-8 flex flex-col items-center text-center gap-4">
             <img src="/brand/velotax-symbol.png" alt="Velotax" className="h-12 md:h-14 w-auto" />
             <h1 className="titulo-principal">Painel de Solicitações</h1>
+            {backendUrl && backendUrl.includes('y40p') && (
+              <div className="mt-2 px-4 py-2 rounded-lg bg-amber-500/20 text-amber-800 dark:bg-amber-500/30 dark:text-amber-200 text-sm font-medium">
+                ⚠️ API antiga (y40p) em uso. Em Netlify → Environment variables, defina NEXT_PUBLIC_API_URL = https://whatsapp-api-6152.onrender.com e refaça o deploy.
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
