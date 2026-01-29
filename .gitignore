@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# Prisma generated (engineType client) - gerado no build
+/generated/
+
 # production
 /build
 
