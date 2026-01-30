@@ -22,7 +22,7 @@ export default function App({ Component, pageProps }) {
   }, [dark]);
 
   return (
-    <SessionProvider session={pageProps.session}>
+    <SessionProvider session={pageProps.session} refetchOnWindowFocus={false}>
       {/* Toasts customizados */}
       <Toaster
         position="top-right"

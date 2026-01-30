@@ -20,7 +20,7 @@ export default function Painel() {
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState(() => (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, ''));
+  const [backendUrl, setBackendUrl] = useState(() => (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, ''));
   const [replies, setReplies] = useState([]);
   const [myAgent, setMyAgent] = useState('');
   const norm = (s='') => String(s).toLowerCase().trim().replace(/\s+/g,' ');
@@ -61,7 +61,7 @@ export default function Painel() {
 
   useEffect(() => {
     try {
-      const url = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, '');
+      const url = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
       setBackendUrl((v) => v || url);
     } catch {}
   }, []);
@@ -216,7 +216,7 @@ export default function Painel() {
             <h1 className="titulo-principal">Painel de Solicitações</h1>
             {backendUrl && backendUrl.includes('y40p') && (
               <div className="mt-2 px-4 py-2 rounded-lg bg-amber-500/20 text-amber-800 dark:bg-amber-500/30 dark:text-amber-200 text-sm font-medium">
-                ⚠️ API antiga (y40p) em uso. Em Netlify → Environment variables, defina NEXT_PUBLIC_API_URL = https://whatsapp-api-6152.onrender.com e refaça o deploy.
+                ⚠️ API antiga (y40p) em uso. Em Netlify → Environment variables, defina NEXT_PUBLIC_API_URL = https://whatsapp-api-new-54aw.onrender.com e refaça o deploy.
               </div>
             )}
           </div>

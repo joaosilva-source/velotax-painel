@@ -140,7 +140,7 @@ export default function ErrosBugs() {
     setLoading(true);
     setMsg('');
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-6152.onrender.com').replace(/\/$/, '');
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
 
     const legenda = montarLegenda();
