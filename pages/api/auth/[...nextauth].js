@@ -20,6 +20,7 @@ export default NextAuth({
   },
   // use default NextAuth pages (/api/auth/signin, etc.) to avoid redirect loops
   trustHost: true,
-  debug: true,
-  secret: process.env.NEXTAUTH_SECRET
+  debug: process.env.NODE_ENV === 'development',
+  // Evita 500 quando NEXTAUTH_SECRET nao esta definido na Vercel (defina em Production)
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || 'fallback-secret-altere-na-vercel'
 });
