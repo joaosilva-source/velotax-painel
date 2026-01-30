@@ -1,5 +1,7 @@
 # Estrutura e deploy: Painel (Vercel) + API WhatsApp (Render)
 
+*(Atualizado para deploy Vercel.)*
+
 ## Visão geral
 
 - **Painel:** Next.js na Vercel (`velotax-painel-eta.vercel.app`)
