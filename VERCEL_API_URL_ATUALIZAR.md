@@ -26,8 +26,8 @@ Depois disso o painel passa a usar a API que está online e com WhatsApp conecta
 | DATABASE_URL | `postgresql://...` |
 | **NEXT_PUBLIC_API_URL** | **`https://whatsapp-api-new-54aw.onrender.com`** |
 | NEXT_PUBLIC_DEFAULT_JID | `120363400851545835@g.us` (id do grupo, pegar em /grupos na API) |
-| NEXTAUTH_SECRET | string aleatória longa (**recomendado** – evita 500 em /api/auth/session) |
-| NEXTAUTH_URL | `https://velotax-painel-eta.vercel.app` (**recomendado** – evita 500) |
+| NEXTAUTH_SECRET | Gere com: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` — **obrigatório** para evitar 500 em /api/auth/session |
+| NEXTAUTH_URL | `https://velotax-painel-eta.vercel.app` — **obrigatório** para evitar 500 |
 
 ## No Render (API)
 

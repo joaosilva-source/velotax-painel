@@ -1,6 +1,7 @@
 // components/FormSolicitacao.jsx
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { getApiUrl } from "@/lib/apiConfig";
 
 export default function FormSolicitacao({ registrarLog }) {
   const [form, setForm] = useState({
@@ -210,7 +211,7 @@ export default function FormSolicitacao({ registrarLog }) {
 
     const mensagemTexto = montarMensagem();
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
+    const apiUrl = getApiUrl();
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
     const payload = { jid: defaultJid, mensagem: mensagemTexto, cpf: form.cpf, solicitacao: form.tipo, agente: agenteNorm || form.agente };
 

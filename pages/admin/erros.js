@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function AdminErros() {
   const [categoria, setCategoria] = useState('APP');
@@ -51,7 +52,7 @@ export default function AdminErros() {
     }
     setEnviando(true);
     try {
-      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
+      const apiUrl = getApiUrl();
       const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
       const msg = `Relato de Erro\nCategoria: ${categoria}\nAgente: ${agente || '—'}\nCPF: ${cpf || '—'}\nDescrição: ${descricao}\nImagens: ${imgs.length}`;
 

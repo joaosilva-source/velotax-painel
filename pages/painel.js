@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
 import Head from "next/head";
+import { getApiUrl } from "@/lib/apiConfig";
 
 export default function Painel() {
   const [logs, setLogs] = useState([]);
@@ -20,7 +21,7 @@ export default function Painel() {
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState(() => (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, ''));
+  const [backendUrl, setBackendUrl] = useState(() => getApiUrl());
   const [replies, setReplies] = useState([]);
   const [myAgent, setMyAgent] = useState('');
   const norm = (s='') => String(s).toLowerCase().trim().replace(/\s+/g,' ');
@@ -61,8 +62,7 @@ export default function Painel() {
 
   useEffect(() => {
     try {
-      const url = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
-      setBackendUrl((v) => v || url);
+      setBackendUrl((v) => v || getApiUrl());
     } catch {}
   }, []);
 
@@ -214,9 +214,9 @@ export default function Painel() {
           <div className="mb-8 surface p-8 flex flex-col items-center text-center gap-4">
             <img src="/brand/velotax-symbol.png" alt="Velotax" className="h-12 md:h-14 w-auto" />
             <h1 className="titulo-principal">Painel de Solicitações</h1>
-            {backendUrl && backendUrl.includes('y40p') && (
+            {backendUrl && (backendUrl.includes('6152') || backendUrl.includes('y40p')) && (
               <div className="mt-2 px-4 py-2 rounded-lg bg-amber-500/20 text-amber-800 dark:bg-amber-500/30 dark:text-amber-200 text-sm font-medium">
-                ⚠️ API antiga (y40p) em uso. Em Netlify → Environment variables, defina NEXT_PUBLIC_API_URL = https://whatsapp-api-new-54aw.onrender.com e refaça o deploy.
+                ⚠️ API antiga em uso. Na Vercel → Settings → Environment Variables, defina NEXT_PUBLIC_API_URL = https://whatsapp-api-new-54aw.onrender.com e faça Redeploy.
               </div>
             )}
           </div>

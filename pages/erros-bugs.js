@@ -1,6 +1,7 @@
 // pages/erros-bugs.js
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function ErrosBugs() {
   const [agente, setAgente] = useState('');
@@ -140,7 +141,7 @@ export default function ErrosBugs() {
     setLoading(true);
     setMsg('');
 
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://whatsapp-api-new-54aw.onrender.com').replace(/\/$/, '');
+    const apiUrl = getApiUrl();
     const defaultJid = process.env.NEXT_PUBLIC_DEFAULT_JID;
 
     const legenda = montarLegenda();

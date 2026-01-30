@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-// So adiciona Google se as credenciais existirem (evita 500 na Vercel sem config)
+// Só adiciona Google se as credenciais existirem (evita 500 na Vercel sem config)
 const hasGoogle = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
 const providers = hasGoogle
   ? [
@@ -15,6 +15,11 @@ const providers = hasGoogle
     ]
   : [];
 
+// URL do app: obrigatório na Vercel para /api/auth/session não retornar 500
+const baseUrl = process.env.NEXTAUTH_URL
+  || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null);
+
 export default NextAuth({
   providers,
   callbacks: {
@@ -24,6 +29,5 @@ export default NextAuth({
   trustHost: true,
   debug: process.env.NODE_ENV === 'development',
   secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || 'fallback-secret-painel',
-  // Vercel: VERCEL_URL = "velotax-painel-eta.vercel.app" (sem https). Garantir NEXTAUTH_URL na Vercel evita 500.
-  url: process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+  url: baseUrl || undefined
 });
