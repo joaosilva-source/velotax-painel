@@ -1,6 +1,6 @@
 // pages/painel.js
 // pages/painel.js - Painel de Solicitações (migrado da home antiga)
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FormSolicitacao from "@/components/FormSolicitacao";
 import Head from "next/head";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -16,9 +16,14 @@ export default function Painel() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [requestsRaw, setRequestsRaw] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState("");
-  const [agentHistory, setAgentHistory] = useState([]);
-  const [agentHistoryLoading, setAgentHistoryLoading] = useState(false);
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
+  // Histórico do agente derivado de requestsRaw (atualiza junto com loadStats / após envio)
+  const agentHistory = useMemo(() => {
+    const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
+    const base = selectedAgent ? arr.filter((r) => norm(r?.agente || '') === norm(selectedAgent)) : arr;
+    return base.slice().sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+  }, [requestsRaw, selectedAgent]);
+  const agentHistoryLoading = statsLoading;
   const prevRequestsRef = useRef([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [backendUrl, setBackendUrl] = useState(() => getApiUrl());
@@ -155,27 +160,6 @@ export default function Painel() {
       prevRequestsRef.current = base.map((r) => ({ id: r.id, status: r.status }));
     } catch {}
   }, [requestsRaw, selectedAgent]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (!selectedAgent) { setAgentHistory([]); return; }
-      setAgentHistoryLoading(true);
-      try {
-        const res = await fetch('/api/requests');
-        if (!res.ok) throw new Error('fail');
-        const list = await res.json();
-        const arr = Array.isArray(list) ? list : [];
-        const filtered = arr.filter((r) => norm(r?.agente||'') === norm(selectedAgent))
-          .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setAgentHistory(filtered);
-      } catch {
-        setAgentHistory([]);
-      }
-      setAgentHistoryLoading(false);
-    };
-    load();
-    setAgentHistoryLimit(100);
-  }, [selectedAgent]);
 
   const buscarCpf = async () => {
     const digits = String(searchCpf || "").replace(/\D/g, "");
@@ -419,7 +403,7 @@ export default function Painel() {
               </div>
 
               <div className="section-title">Formulário de Solicitação</div>
-              <FormSolicitacao registrarLog={registrarLog} />
+              <FormSolicitacao registrarLog={registrarLog} onEnviadoSuccess={loadStats} />
             </div>
 
             <div className="lg:col-span-3 card hover:-translate-y-0.5 p-4">

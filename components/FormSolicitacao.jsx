@@ -3,7 +3,14 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { getApiUrl } from "@/lib/apiConfig";
 
-export default function FormSolicitacao({ registrarLog }) {
+// fetch com timeout para evitar loading infinito
+function fetchWithTimeout(url, options = {}, ms = 20000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
+export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
   const [form, setForm] = useState({
     agente: "",
     cpf: "",
@@ -216,14 +223,21 @@ export default function FormSolicitacao({ registrarLog }) {
     const payload = { jid: defaultJid, mensagem: mensagemTexto, cpf: form.cpf, solicitacao: form.tipo, agente: agenteNorm || form.agente };
 
     try {
-      // 1) Tentar enviar via WhatsApp se configurado
+      // 1) Tentar enviar via WhatsApp se configurado (timeout 20s)
       let res = { ok: false };
       if (apiUrl && defaultJid) {
-        res = await fetch(apiUrl + "/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
+        try {
+          res = await fetchWithTimeout(apiUrl + "/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }, 20000);
+        } catch (err) {
+          if (err?.name === 'AbortError') {
+            registrarLog("⏱️ Timeout ao enviar para WhatsApp. Registrando no painel.");
+            toast.error("Envio para o grupo demorou; solicitação será registrada no painel.");
+          } else throw err;
+        }
       }
 
       // 2) Extrair waMessageId quando houver resposta OK
@@ -235,8 +249,8 @@ export default function FormSolicitacao({ registrarLog }) {
         } catch {}
       }
 
-      // 3) Persistir SEMPRE a solicitação e o log
-      await fetch('/api/requests', {
+      // 3) Persistir SEMPRE a solicitação e o log (timeout 15s cada)
+      await fetchWithTimeout('/api/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,9 +261,9 @@ export default function FormSolicitacao({ registrarLog }) {
           agentContact: defaultJid || null,
           waMessageId,
         })
-      });
+      }, 15000);
 
-      await fetch('/api/logs', {
+      await fetchWithTimeout('/api/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -281,7 +295,7 @@ export default function FormSolicitacao({ registrarLog }) {
             observacoes: form.observacoes || '',
           },
         }),
-      });
+      }, 10000);
 
       // 4) Atualizar UI/Cache
       if (!apiUrl || !defaultJid) {
@@ -314,7 +328,12 @@ export default function FormSolicitacao({ registrarLog }) {
         enviado: wasSentOK,
         createdAt: new Date().toISOString(),
       };
-      saveCache([newItem, ...localLogs].slice(0, 50));
+      setLocalLogs((prev) => {
+        const next = [newItem, ...prev].slice(0, 50);
+        try { localStorage.setItem('velotax_local_logs', JSON.stringify(next)); } catch {}
+        return next;
+      });
+      onEnviadoSuccess?.();
     } catch (err) {
       registrarLog("❌ Falha de conexão com a API.");
       toast.error("Falha de conexão. A API está no ar?");
