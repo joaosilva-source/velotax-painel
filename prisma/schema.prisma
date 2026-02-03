@@ -24,6 +24,8 @@ model Request {
   respondedBy     String?   @map("responded_by")
   agentContact    String?   @map("agent_contact")
   waMessageId     String?   @map("wa_message_id")
+  /// Respostas no grupo (menções/reply à mensagem da solicitação). Array de { reactor, text, at }.
+  replies         Json?
 }
 
 model UsageLog {

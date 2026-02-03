@@ -455,20 +455,37 @@ export default function Painel() {
                       const badge = s === 'feito' ? 'bg-emerald-100 text-emerald-700' : ((s === 'não feito' || s === 'nao feito') ? 'bg-red-100 text-red-700' : (s === 'enviado' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'));
                       const created = r.createdAt ? new Date(r.createdAt).toLocaleString() : '—';
                       const concluded = (s === 'feito' || s === 'não feito' || s === 'nao feito') && r.updatedAt ? new Date(r.updatedAt).toLocaleString() : null;
+                      const repliesList = Array.isArray(r.replies) ? r.replies : [];
                       return (
-                        <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                            <div className="text-xs text-black/60 flex items-center gap-2">
-                              <span>Status:</span>
-                              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${badge}`}>{s || '—'}</span>
+                        <div key={r.id} className="p-3 bg-white rounded border border-black/10">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                              <div className="text-xs text-black/60 flex items-center gap-2">
+                                <span>Status:</span>
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${badge}`}>{s || '—'}</span>
+                              </div>
+                              <div className="text-[11px] text-black/60 mt-1">
+                                <span>Aberto em: {created}</span>
+                                {concluded && <span className="ml-2">• Concluído em: {concluded}</span>}
+                              </div>
+                              {repliesList.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-black/5">
+                                  <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
+                                  <div className="space-y-1">
+                                    {repliesList.slice(-5).reverse().map((rep, i) => (
+                                      <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
+                                        <span className="font-medium">{rep.reactor || '—'}</span>
+                                        <span className="ml-1">{(rep.text || '').slice(0, 80)}{(rep.text || '').length > 80 ? '…' : ''}</span>
+                                        <span className="ml-1 opacity-70">{rep.at ? new Date(rep.at).toLocaleString() : ''}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-[11px] text-black/60 mt-1">
-                              <span>Aberto em: {created}</span>
-                              {concluded && <span className="ml-2">• Concluído em: {concluded}</span>}
-                            </div>
+                            <div className="text-xs text-black/60 shrink-0">{created}</div>
                           </div>
-                          <div className="text-xs text-black/60">{created}</div>
                         </div>
                       );
                     })}

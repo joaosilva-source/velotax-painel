@@ -87,7 +87,7 @@ export default function FormSolicitacao({ registrarLog }) {
         const match = item.waMessageId
           ? all.find(r => r.waMessageId === item.waMessageId)
           : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-        return match ? { ...item, status: match.status } : item;
+        return match ? { ...item, status: match.status, replies: match.replies } : item;
       });
       saveCache(updated);
     } catch {}
@@ -106,7 +106,7 @@ export default function FormSolicitacao({ registrarLog }) {
           const match = item.waMessageId
             ? all.find(r => r.waMessageId === item.waMessageId)
             : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-          return match ? { ...item, status: match.status } : item;
+          return match ? { ...item, status: match.status, replies: match.replies } : item;
         });
         saveCache(updated);
       } catch {}
@@ -529,6 +529,7 @@ export default function FormSolicitacao({ registrarLog }) {
             const bar2 = (isDoneOk || isDoneFail) ? colorDone2 : (sentOnly ? 'bg-amber-400' : 'bg-black/15 dark:bg-white/20');
             const bar3 = (isDoneOk || isDoneFail) ? colorDone3 : 'bg-black/15 dark:bg-white/20';
             const icon = isDoneOk ? '✅' : (isDoneFail ? '❌' : (sentOnly ? '📨' : '⏳'));
+            const repliesList = Array.isArray(l.replies) ? l.replies : [];
             return (
               <div key={idx} className="p-3 bg-white rounded border border-black/10">
                 <div className="flex items-center justify-between">
@@ -544,6 +545,20 @@ export default function FormSolicitacao({ registrarLog }) {
                   <span className={`h-1.5 w-8 rounded-full ${bar3}`}></span>
                   <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
                 </div>
+                {repliesList.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-black/5">
+                    <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
+                    <div className="space-y-1">
+                      {repliesList.slice(-3).reverse().map((rep, i) => (
+                        <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
+                          <span className="font-medium">{rep.reactor || '—'}</span>
+                          <span className="ml-1">{(rep.text || '').slice(0, 60)}{(rep.text || '').length > 60 ? '…' : ''}</span>
+                          {rep.at && <span className="ml-1 opacity-70">{new Date(rep.at).toLocaleString()}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

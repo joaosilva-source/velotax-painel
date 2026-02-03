@@ -109,7 +109,7 @@ export default function ErrosBugs() {
         const match = item.waMessageId
           ? all.find(r => r.waMessageId === item.waMessageId)
           : all.find(r => r.cpf === item.cpf && String(r.tipo||'').startsWith('Erro/Bug'));
-        return match ? { ...item, status: match.status } : item;
+        return match ? { ...item, status: match.status, replies: match.replies } : item;
       });
       saveCache(updated);
     } catch {}
@@ -349,6 +349,7 @@ export default function ErrosBugs() {
                 <option>Crédito Pessoal</option>
                 <option>Crédito do Trabalhador</option>
                 <option>Antecipação</option>
+                <option>Erro -Gov/ConectaMais</option>
               </select>
             </div>
 
@@ -508,6 +509,7 @@ export default function ErrosBugs() {
             <div className="space-y-2">
               {localLogs.map((l, idx) => {
                 const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+                const repliesList = Array.isArray(l.replies) ? l.replies : [];
                 return (
                   <div key={idx} className="p-3 bg-white rounded border border-black/10">
                     <div className="flex items-center justify-between">
@@ -532,6 +534,20 @@ export default function ErrosBugs() {
                         );
                       })()}
                     </div>
+                    {repliesList.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-black/5">
+                        <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
+                        <div className="space-y-1">
+                          {repliesList.slice(-3).reverse().map((rep, i) => (
+                            <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
+                              <span className="font-medium">{rep.reactor || '—'}</span>
+                              <span className="ml-1">{(rep.text || '').slice(0, 60)}{(rep.text || '').length > 60 ? '…' : ''}</span>
+                              {rep.at && <span className="ml-1 opacity-70">{new Date(rep.at).toLocaleString()}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
