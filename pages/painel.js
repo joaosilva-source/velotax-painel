@@ -1,6 +1,7 @@
 // pages/painel.js
 // pages/painel.js - Painel de Solicitações (migrado da home antiga)
 import { useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import FormSolicitacao from "@/components/FormSolicitacao";
 import Head from "next/head";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -10,6 +11,7 @@ export default function Painel() {
   const [searchCpf, setSearchCpf] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [expandedSearchKeys, setExpandedSearchKeys] = useState(new Set());
   const [searchCpfError, setSearchCpfError] = useState('');
   const [stats, setStats] = useState({ today: 0, pending: 0, done: 0 });
   const [statsLoading, setStatsLoading] = useState(false);
@@ -17,6 +19,12 @@ export default function Painel() {
   const [requestsRaw, setRequestsRaw] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState("");
   const [agentHistoryLimit, setAgentHistoryLimit] = useState(50);
+  const norm = (s = '') => String(s).toLowerCase().trim().replace(/\s+/g, ' ');
+  const normStatus = (s) => {
+    const t = String(s || '').toLowerCase().trim();
+    if (t === 'nao feito' || t === 'não feito') return 'não feito';
+    return t;
+  };
   // Histórico do agente derivado de requestsRaw (atualiza junto com loadStats / após envio)
   const agentHistory = useMemo(() => {
     const arr = Array.isArray(requestsRaw) ? requestsRaw : [];
@@ -25,11 +33,12 @@ export default function Painel() {
   }, [requestsRaw, selectedAgent]);
   const agentHistoryLoading = statsLoading;
   const prevRequestsRef = useRef([]);
+  const audioContextRef = useRef(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [expandedAgentCards, setExpandedAgentCards] = useState(new Set());
   const [backendUrl, setBackendUrl] = useState(() => getApiUrl());
   const [replies, setReplies] = useState([]);
   const [myAgent, setMyAgent] = useState('');
-  const norm = (s='') => String(s).toLowerCase().trim().replace(/\s+/g,' ');
 
   const registrarLog = (msg) => {
     setLogs((prev) => [{ msg, time: new Date().toLocaleString("pt-BR") }, ...prev]);
@@ -59,6 +68,40 @@ export default function Painel() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Desbloqueia áudio no primeiro clique/toque/tecla (exigência do navegador)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const unlock = () => {
+      try {
+        if (!audioContextRef.current) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) {
+            audioContextRef.current = new Ctx();
+            audioContextRef.current.resume();
+          }
+        } else {
+          audioContextRef.current.resume();
+        }
+      } catch {}
+    };
+    const opts = { passive: true };
+    window.addEventListener('click', unlock, opts);
+    window.addEventListener('keydown', unlock, opts);
+    window.addEventListener('touchstart', unlock, opts);
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+  }, []);
+
+  useEffect(() => {
     try {
       const a = localStorage.getItem('velotax_agent') || '';
       setMyAgent(a);
@@ -69,6 +112,28 @@ export default function Painel() {
     try {
       setBackendUrl((v) => v || getApiUrl());
     } catch {}
+  }, []);
+
+  // Lembrete pesquisa de avaliação: ao abrir o painel e a cada 1h30
+  useEffect(() => {
+    const msg = 'Lembre-se de sempre enviar o cliente para a pesquisa de avaliação.';
+    const INTERVALO_MS = 90 * 60 * 1000; // 1 hora e meia
+    const show = () => {
+      toast(msg, {
+        icon: '📋',
+        duration: 8000,
+        style: { background: '#0ea5e9', color: '#fff' },
+      });
+    };
+    const t0 = setTimeout(show, 800); // ao abrir o painel (breve delay para o Toaster estar pronto)
+    let t1 = setTimeout(function again() {
+      show();
+      t1 = setTimeout(again, INTERVALO_MS);
+    }, INTERVALO_MS);
+    return () => {
+      clearTimeout(t0);
+      clearTimeout(t1);
+    };
   }, []);
 
   useEffect(() => {
@@ -123,39 +188,66 @@ export default function Painel() {
 
     try {
       const prev = Array.isArray(prevRequestsRef.current) ? prevRequestsRef.current : [];
-      const mapPrev = new Map(prev.map((r) => [r.id, String(r.status || '')]));
+      const mapPrev = new Map(prev.map((r) => [r.id, normStatus(r.status)]));
       const changed = base.filter((r) => {
         const prevSt = mapPrev.get(r.id);
-        const curSt = String(r.status || '').toLowerCase();
-        if (!prevSt) return false;
-        return prevSt.toLowerCase() !== curSt && (curSt === 'feito' || curSt === 'não feito');
+        const curSt = normStatus(r.status);
+        if (prevSt === undefined) return false;
+        return prevSt !== curSt && (curSt === 'feito' || curSt === 'não feito');
       });
       if (changed.length) {
-        const play = async () => {
+        const playSound = (feito) => {
           try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const o = ctx.createOscillator();
-            const g = ctx.createGain();
-            o.type = 'sine'; o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
-            g.gain.setValueAtTime(0.001, ctx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-            o.start();
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-            o.stop(ctx.currentTime + 0.4);
-          } catch {}
-        };
-        const notify = (title, body) => {
-          try {
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification(title, { body });
+            const ctx = audioContextRef.current || new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.resume) ctx.resume();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.value = feito ? 880 : 440;
+            gain.gain.setValueAtTime(0.001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.03);
+            osc.start(ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+            osc.stop(ctx.currentTime + 0.3);
+            if (feito) {
+              setTimeout(() => {
+                try {
+                  const o2 = ctx.createOscillator();
+                  const g2 = ctx.createGain();
+                  o2.connect(g2); g2.connect(ctx.destination);
+                  o2.type = 'sine'; o2.frequency.value = 1100;
+                  g2.gain.setValueAtTime(0.001, ctx.currentTime);
+                  g2.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+                  o2.start(ctx.currentTime);
+                  g2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.2);
+                  o2.stop(ctx.currentTime + 0.25);
+                } catch {}
+              }, 180);
             }
           } catch {}
         };
-        changed.forEach((r) => {
-          const st = String(r.status || '').toLowerCase();
-          notify(st === 'feito' ? 'Solicitação concluída' : 'Solicitação marcada como não feita', `${r.tipo} — ${r.cpf}`);
+        const notifyBrowser = (title, body) => {
+          try {
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification(title, { body, icon: '/favicon.ico' });
+            }
+          } catch {}
+        };
+        const hasFeito = changed.some((r) => normStatus(r.status) === 'feito');
+        const hasNaoFeito = changed.some((r) => normStatus(r.status) === 'não feito');
+        const toShow = changed.map((r) => ({ r, isFeito: normStatus(r.status) === 'feito', msg: `${r.tipo || 'Solicitação'} — ${r.cpf || '—'}` }));
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            toShow.forEach(({ isFeito, msg }) => {
+              toast(msg, { icon: isFeito ? '✅' : '❌', duration: 5000, style: { background: isFeito ? '#0d9488' : '#b45309', color: '#fff' } });
+              notifyBrowser(isFeito ? 'Solicitação concluída' : 'Solicitação marcada como não feita', msg);
+            });
+            if (hasFeito) playSound(true);
+            else if (hasNaoFeito) playSound(false);
+          }, 0);
         });
-        play();
       }
       prevRequestsRef.current = base.map((r) => ({ id: r.id, status: r.status }));
     } catch {}
@@ -254,6 +346,9 @@ export default function Painel() {
                       </svg>
                     ) : 'Atualizar agora'}
                   </button>
+                  <a href="/conectar-whatsapp" className="text-sm px-3 py-2 rounded border hover:opacity-90 inline-flex items-center gap-2 transition-all duration-200" title="Exibir QR para conectar a API ao WhatsApp">
+                    QR WhatsApp
+                  </a>
                   <div className="text-[11px] text-black/60 min-w-[120px] text-right">
                     {lastUpdated ? `Atualizado às ${new Date(lastUpdated).toLocaleTimeString()}` : ''}
                   </div>
@@ -305,26 +400,50 @@ export default function Painel() {
                       const imgCount = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
                       const videoCount = Array.isArray(r?.payload?.videos) ? r.payload.videos.length : 0;
                       const total = imgCount + videoCount;
+                      const repliesList = Array.isArray(r.replies) ? r.replies : [];
+                      const isExpanded = expandedSearchKeys.has(r.id);
+                      const toggleSearch = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setExpandedSearchKeys((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(r.id)) next.delete(r.id);
+                          else next.add(r.id);
+                          return next;
+                        });
+                      };
                       return (
-                        <div key={r.id} className="p-3 bg-white rounded border border-black/10">
+                        <div
+                          key={r.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={toggleSearch}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSearch(e); } }}
+                          className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                          aria-expanded={isExpanded}
+                        >
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="font-medium flex items-center gap-2">
+                              <div className="font-medium flex items-center gap-2 flex-wrap">
                                 <span>{r.tipo} — {r.cpf}</span>
                                 {total > 0 && (
                                   <span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-xs">
                                     Anexos: {imgCount > 0 ? `${imgCount} img` : ''}{imgCount > 0 && videoCount > 0 ? ' + ' : ''}{videoCount > 0 ? `${videoCount} vid` : ''}
                                   </span>
                                 )}
+                                {repliesList.length > 0 && (
+                                  <span className="text-[11px] text-black/50">{isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}</span>
+                                )}
                               </div>
                               <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
                               {total > 0 && (
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     // Criar modal similar ao da página de erros/bugs
                                     const modal = document.createElement('div');
                                     modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50';
@@ -395,6 +514,49 @@ export default function Painel() {
                               )}
                             </div>
                           </div>
+                          {isExpanded && repliesList.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-black/10">
+                              <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                              <div className="space-y-1.5 max-h-48 overflow-auto">
+                                {[...repliesList].reverse().map((rep, i) => (
+                                  <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                                    <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                                    <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                                    <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                                      {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                                      <span className="text-[10px]">
+                                        {rep.replyMessageId ? (
+                                          rep.confirmedAt ? (
+                                            <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                fetch('/api/requests/reply-confirm', {
+                                                  method: 'POST',
+                                                  headers: { 'Content-Type': 'application/json' },
+                                                  body: JSON.stringify({ requestId: r.id, replyMessageId: rep.replyMessageId, confirmedBy: myAgent })
+                                                }).then((res) => res.json()).then((data) => {
+                                                  if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); loadStats(); }
+                                                  else toast.error(data.error || 'Falha ao confirmar');
+                                                }).catch(() => toast.error('Falha ao confirmar'));
+                                              }}
+                                              className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                            >
+                                              Confirmar visto (✓ no WhatsApp)
+                                            </button>
+                                          )
+                                        ) : (
+                                          <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -440,12 +602,39 @@ export default function Painel() {
                       const created = r.createdAt ? new Date(r.createdAt).toLocaleString() : '—';
                       const concluded = (s === 'feito' || s === 'não feito' || s === 'nao feito') && r.updatedAt ? new Date(r.updatedAt).toLocaleString() : null;
                       const repliesList = Array.isArray(r.replies) ? r.replies : [];
+                      const cardId = r.id || r.waMessageId || created;
+                      const isExpanded = expandedAgentCards.has(cardId);
+                      const toggleExpand = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setExpandedAgentCards((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(cardId)) next.delete(cardId);
+                          else next.add(cardId);
+                          return next;
+                        });
+                      };
                       return (
-                        <div key={r.id} className="p-3 bg-white rounded border border-black/10">
+                        <div
+                          key={r.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={toggleExpand}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(e); } }}
+                          className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                          aria-expanded={isExpanded}
+                        >
                           <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                              <div className="text-xs text-black/60 flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium flex items-center gap-2 flex-wrap">
+                                <span>{r.tipo} — {r.cpf}</span>
+                                {repliesList.length > 0 && (
+                                  <span className="text-[11px] text-black/50">
+                                    {isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-black/60 flex items-center gap-2 mt-0.5">
                                 <span>Status:</span>
                                 <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${badge}`}>{s || '—'}</span>
                               </div>
@@ -453,15 +642,44 @@ export default function Painel() {
                                 <span>Aberto em: {created}</span>
                                 {concluded && <span className="ml-2">• Concluído em: {concluded}</span>}
                               </div>
-                              {repliesList.length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-black/5">
-                                  <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
-                                  <div className="space-y-1">
-                                    {repliesList.slice(-5).reverse().map((rep, i) => (
-                                      <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
-                                        <span className="font-medium">{rep.reactor || '—'}</span>
-                                        <span className="ml-1">{(rep.text || '').slice(0, 80)}{(rep.text || '').length > 80 ? '…' : ''}</span>
-                                        <span className="ml-1 opacity-70">{rep.at ? new Date(rep.at).toLocaleString() : ''}</span>
+                              {isExpanded && repliesList.length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-black/10">
+                                  <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                                  <div className="space-y-1.5 max-h-48 overflow-auto">
+                                    {[...repliesList].reverse().map((rep, i) => (
+                                      <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                                        <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                                        <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                                        <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                                          {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                                          <span className="text-[10px]">
+                                            {rep.replyMessageId ? (
+                                              rep.confirmedAt ? (
+                                                <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                              ) : (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    fetch('/api/requests/reply-confirm', {
+                                                      method: 'POST',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({ requestId: r.id, replyMessageId: rep.replyMessageId, confirmedBy: myAgent })
+                                                    }).then((res) => res.json()).then((data) => {
+                                                      if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); loadStats(); }
+                                                      else toast.error(data.error || 'Falha ao confirmar');
+                                                    }).catch(() => toast.error('Falha ao confirmar'));
+                                                  }}
+                                                  className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                                >
+                                                  Confirmar visto (✓ no WhatsApp)
+                                                </button>
+                                              )
+                                            ) : (
+                                              <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                                            )}
+                                          </span>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
