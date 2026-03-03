@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getApiUrl } from '@/lib/apiConfig';
+import { getApiUrl, getApiHeaders } from '@/lib/apiConfig';
 
 export default function AdminErros() {
   const [categoria, setCategoria] = useState('APP');
@@ -60,7 +60,7 @@ export default function AdminErros() {
         // 1) Envia texto (opcional)
         try {
           await fetch(apiUrl + '/send', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: getApiHeaders(),
             body: JSON.stringify({ jid: defaultJid, mensagem: msg })
           });
         } catch {}
@@ -70,7 +70,7 @@ export default function AdminErros() {
             const base64 = String(im.dataUrl || '').split(',')[1] || '';
             if (!base64) continue;
             await fetch(apiUrl + '/send', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              method: 'POST', headers: getApiHeaders(),
               body: JSON.stringify({
                 jid: defaultJid,
                 imageBase64: base64,

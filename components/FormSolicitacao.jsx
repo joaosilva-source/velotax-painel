@@ -1,7 +1,7 @@
 // components/FormSolicitacao.jsx
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { getApiUrl } from "@/lib/apiConfig";
+import { getApiUrl, getApiHeaders } from "@/lib/apiConfig";
 
 // fetch com timeout para evitar loading infinito
 function fetchWithTimeout(url, options = {}, ms = 20000) {
@@ -26,6 +26,9 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
     dividaIrpfQuitada: false,
     semDebitoAberto: false,
     n2Ouvidora: false,
+    procon: false,
+    reclameAqui: false,
+    processo: false,
     nomeCliente: "",
     dataContratacao: "",
     valor: "",
@@ -37,6 +40,8 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
   const [buscaCpf, setBuscaCpf] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [buscaResultados, setBuscaResultados] = useState([]);
+  const [expandedLogKeys, setExpandedLogKeys] = useState(new Set());
+  const [expandedBuscaKeys, setExpandedBuscaKeys] = useState(new Set());
 
   // util: normalizar nome do agente (Title Case, espaços simples)
   const toTitleCase = (s = '') => {
@@ -94,7 +99,7 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
         const match = item.waMessageId
           ? all.find(r => r.waMessageId === item.waMessageId)
           : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-        return match ? { ...item, status: match.status, replies: match.replies } : item;
+        return match ? { ...item, id: match.id, status: match.status, replies: match.replies } : item;
       });
       saveCache(updated);
     } catch {}
@@ -113,7 +118,7 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
           const match = item.waMessageId
             ? all.find(r => r.waMessageId === item.waMessageId)
             : all.find(r => r.cpf === item.cpf && r.tipo === item.tipo);
-          return match ? { ...item, status: match.status, replies: match.replies } : item;
+          return match ? { ...item, id: match.id, status: match.status, replies: match.replies } : item;
         });
         saveCache(updated);
       } catch {}
@@ -141,6 +146,7 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
       "Exclusão de Chave PIX": "Exclusão de Chave PIX",
       "Alteração de Dados Cadastrais": "Alteração de Dados Cadastrais",
       "Reativação de Conta": "Reativação de Conta",
+      "Reset de Senha": "Reset de Senha",
       "Cancelamento": "Cancelamento",
       "Aumento de Limite Pix": "Aumento de Limite Pix",
     };
@@ -161,6 +167,9 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
     } else if (form.tipo === "Exclusão de Chave PIX") {
       msg += `Sem Débito em aberto: ${simNao(form.semDebitoAberto)}\n`;
       msg += `N2 - Ouvidora: ${simNao(form.n2Ouvidora)}\n`;
+      msg += `Procon: ${simNao(form.procon)}\n`;
+      msg += `Reclame Aqui: ${simNao(form.reclameAqui)}\n`;
+      msg += `Processo: ${simNao(form.processo)}\n`;
       msg += `Observações: ${form.observacoes || "—"}\n`;
     } else if (form.tipo === "Cancelamento") {
       msg += `Nome do Cliente: ${form.nomeCliente || "—"}\n`;
@@ -184,8 +193,8 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
       toast.error('CPF inválido. Digite os 11 dígitos.');
       return;
     }
-    if (form.tipo === "Exclusão de Chave PIX" && !form.semDebitoAberto && !form.n2Ouvidora) {
-      toast.error('Para Exclusão de Chave PIX, é obrigatório selecionar pelo menos uma opção: "Sem Débito em aberto" ou "N2 - Ouvidora"');
+    if (form.tipo === "Exclusão de Chave PIX" && !form.semDebitoAberto && !form.n2Ouvidora && !form.procon && !form.reclameAqui && !form.processo) {
+      toast.error('Para Exclusão de Chave PIX, selecione pelo menos uma opção: Sem Débito em aberto, N2 - Ouvidora, Procon, Reclame Aqui ou Processo.');
       return;
     }
     setLoading(true);
@@ -229,7 +238,7 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
         try {
           res = await fetchWithTimeout(apiUrl + "/send", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getApiHeaders(),
             body: JSON.stringify(payload)
           }, 20000);
         } catch (err) {
@@ -395,6 +404,7 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
           <option>Exclusão de Chave PIX</option>
           <option>Exclusão de Conta</option>
           <option>Reativação de Conta</option>
+          <option>Reset de Senha</option>
           <option>Cancelamento</option>
           </select>
         </div>
@@ -453,6 +463,18 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
             <input className="check-anim" type="checkbox" checked={form.n2Ouvidora} onChange={(e) => atualizar("n2Ouvidora", e.target.checked)} />
             N2 - Ouvidora
           </label>
+          <label className="flex items-center gap-2 mt-2">
+            <input className="check-anim" type="checkbox" checked={form.procon} onChange={(e) => atualizar("procon", e.target.checked)} />
+            Procon
+          </label>
+          <label className="flex items-center gap-2 mt-2">
+            <input className="check-anim" type="checkbox" checked={form.reclameAqui} onChange={(e) => atualizar("reclameAqui", e.target.checked)} />
+            Reclame Aqui
+          </label>
+          <label className="flex items-center gap-2 mt-2">
+            <input className="check-anim" type="checkbox" checked={form.processo} onChange={(e) => atualizar("processo", e.target.checked)} />
+            Processo
+          </label>
         </div>
       )}
 
@@ -505,15 +527,89 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
             <h2 className="text-lg font-semibold">Histórico recente para {String(buscaCpf || form.cpf)}</h2>
           </div>
           <div className="space-y-2">
-            {buscaResultados.slice(0,5).map((r) => (
-              <div key={r.id} className="p-3 bg-white rounded border border-black/10 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{r.tipo} — {r.cpf}</div>
-                  <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+            {buscaResultados.slice(0, 5).map((r) => {
+              const repliesList = Array.isArray(r.replies) ? r.replies : [];
+              const isExpanded = expandedBuscaKeys.has(r.id);
+              const toggleBusca = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setExpandedBuscaKeys((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(r.id)) next.delete(r.id);
+                  else next.add(r.id);
+                  return next;
+                });
+              };
+              return (
+                <div
+                  key={r.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={toggleBusca}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBusca(e); } }}
+                  className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                  aria-expanded={isExpanded}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <div>
+                        <div className="font-medium">{r.tipo} — {r.cpf}</div>
+                        <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
+                      </div>
+                      {repliesList.length > 0 && (
+                        <span className="text-[11px] text-black/50 shrink-0">
+                          {isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-black/60 shrink-0">{new Date(r.createdAt).toLocaleString()}</div>
+                  </div>
+                  {isExpanded && repliesList.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-black/10">
+                      <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                      <div className="space-y-1.5 max-h-48 overflow-auto">
+                        {[...repliesList].reverse().map((rep, i) => (
+                          <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                            <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                            <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                            <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                              {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                              <span className="text-[10px]">
+                                {rep.replyMessageId ? (
+                                  rep.confirmedAt ? (
+                                    <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        fetch('/api/requests/reply-confirm', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ requestId: r.id, replyMessageId: rep.replyMessageId, confirmedBy: form.agente })
+                                        }).then((res) => res.json()).then((data) => {
+                                          if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); buscarCpf(); if (onEnviadoSuccess) onEnviadoSuccess(); }
+                                          else toast.error(data.error || 'Falha ao confirmar');
+                                        }).catch(() => toast.error('Falha ao confirmar'));
+                                      }}
+                                      className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                    >
+                                      Confirmar visto (✓ no WhatsApp)
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -549,14 +645,39 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
             const bar3 = (isDoneOk || isDoneFail) ? colorDone3 : 'bg-black/15 dark:bg-white/20';
             const icon = isDoneOk ? '✅' : (isDoneFail ? '❌' : (sentOnly ? '📨' : '⏳'));
             const repliesList = Array.isArray(l.replies) ? l.replies : [];
+            const logKey = l.waMessageId || `log-${idx}-${String(l.createdAt)}`;
+            const isExpanded = expandedLogKeys.has(logKey);
+            const toggleExpand = (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setExpandedLogKeys((prev) => {
+                const next = new Set(prev);
+                if (next.has(logKey)) next.delete(logKey);
+                else next.add(logKey);
+                return next;
+              });
+            };
             return (
-              <div key={idx} className="p-3 bg-white rounded border border-black/10">
+              <div
+                key={idx}
+                role="button"
+                tabIndex={0}
+                onClick={toggleExpand}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(e); } }}
+                className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                aria-expanded={isExpanded}
+              >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{icon}</span>
-                    <span className="text-sm">{l.cpf} — {l.tipo}</span>
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-xl shrink-0">{icon}</span>
+                    <span className="text-sm truncate">{l.cpf} — {l.tipo}</span>
+                    {repliesList.length > 0 && (
+                      <span className="text-[11px] text-black/50 shrink-0">
+                        {isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
-                  <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                  <div className="text-xs text-black/60 shrink-0">{new Date(l.createdAt).toLocaleString()}</div>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5" aria-label={`progresso: ${s || 'em aberto'}`}>
                   <span className={`h-1.5 w-8 rounded-full ${bar1}`}></span>
@@ -564,15 +685,44 @@ export default function FormSolicitacao({ registrarLog, onEnviadoSuccess }) {
                   <span className={`h-1.5 w-8 rounded-full ${bar3}`}></span>
                   <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
                 </div>
-                {repliesList.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-black/5">
-                    <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
-                    <div className="space-y-1">
-                      {repliesList.slice(-3).reverse().map((rep, i) => (
-                        <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
-                          <span className="font-medium">{rep.reactor || '—'}</span>
-                          <span className="ml-1">{(rep.text || '').slice(0, 60)}{(rep.text || '').length > 60 ? '…' : ''}</span>
-                          {rep.at && <span className="ml-1 opacity-70">{new Date(rep.at).toLocaleString()}</span>}
+                {isExpanded && repliesList.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-black/10">
+                    <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                    <div className="space-y-1.5 max-h-48 overflow-auto">
+                      {[...repliesList].reverse().map((rep, i) => (
+                        <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                          <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                          <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                          <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                            {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                            <span className="text-[10px]">
+                              {rep.replyMessageId && l.id ? (
+                                rep.confirmedAt ? (
+                                  <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      fetch('/api/requests/reply-confirm', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ requestId: l.id, replyMessageId: rep.replyMessageId, confirmedBy: form.agente })
+                                      }).then((res) => res.json()).then((data) => {
+                                        if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); refreshNow(); if (onEnviadoSuccess) onEnviadoSuccess(); }
+                                        else toast.error(data.error || 'Falha ao confirmar');
+                                      }).catch(() => toast.error('Falha ao confirmar'));
+                                    }}
+                                    className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                  >
+                                    Confirmar visto (✓ no WhatsApp)
+                                  </button>
+                                )
+                              ) : (
+                                <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                              )}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>

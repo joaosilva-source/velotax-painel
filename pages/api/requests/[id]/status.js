@@ -2,12 +2,14 @@
 import prisma from '@/lib/prisma';
 
 async function notifyWhatsapp({ text, toJid }) {
-  const api = process.env.BACKEND_API_URL;
+  const api = process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (!api || !toJid) return;
   try {
-    await fetch(`${api}/send`, {
+    const headers = { 'Content-Type': 'application/json' };
+    if (api.includes('ngrok')) headers['ngrok-skip-browser-warning'] = 'true';
+    await fetch(`${api.replace(/\/$/, '')}/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ jid: toJid, mensagem: text })
     });
   } catch {}

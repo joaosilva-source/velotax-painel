@@ -1,7 +1,8 @@
 // pages/erros-bugs.js
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
-import { getApiUrl } from '@/lib/apiConfig';
+import toast from 'react-hot-toast';
+import { getApiUrl, getApiHeaders } from '@/lib/apiConfig';
 
 export default function ErrosBugs() {
   const [agente, setAgente] = useState('');
@@ -15,9 +16,11 @@ export default function ErrosBugs() {
   const [selectedRequest, setSelectedRequest] = useState(null); // Para exibir anexos
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   const [localLogs, setLocalLogs] = useState([]); // {cpf, tipo, waMessageId, status, createdAt}
+  const [expandedLogKeys, setExpandedLogKeys] = useState(new Set());
   const [searchCpf, setSearchCpf] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [expandedSearchKeys, setExpandedSearchKeys] = useState(new Set());
 
   // cache helpers
   useEffect(() => {
@@ -109,7 +112,7 @@ export default function ErrosBugs() {
         const match = item.waMessageId
           ? all.find(r => r.waMessageId === item.waMessageId)
           : all.find(r => r.cpf === item.cpf && String(r.tipo||'').startsWith('Erro/Bug'));
-        return match ? { ...item, status: match.status, replies: match.replies } : item;
+        return match ? { ...item, id: match.id, status: match.status, replies: match.replies } : item;
       });
       saveCache(updated);
     } catch {}
@@ -122,7 +125,10 @@ export default function ErrosBugs() {
   }, [localLogs.length]);
 
   const montarLegenda = () => {
-    let m = `*Novo Erro/Bug - ${tipo}*\n\n`;
+    const titulo = (tipo === 'Bloqueio judicial')
+      ? '*Bloqueio Judicial*\n\n'
+      : `*Novo Erro/Bug - ${tipo}*\n\n`;
+    let m = titulo;
     m += `Agente: ${agente}\n`;
     if (cpf) m += `CPF: ${cpf}\n`;
     m += `\nDescrição:\n${descricao || '—'}\n`;
@@ -153,7 +159,7 @@ export default function ErrosBugs() {
       if (apiUrl && defaultJid) {
         const resp = await fetch(`${apiUrl}/send`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getApiHeaders(),
           body: JSON.stringify({
             jid: defaultJid,
             mensagem: montarLegenda(),
@@ -288,26 +294,49 @@ export default function ErrosBugs() {
                   const imgCount = Array.isArray(r?.payload?.previews) ? r.payload.previews.length : (Array.isArray(r?.payload?.imagens) ? r.payload.imagens.length : 0);
                   const videoCount = Array.isArray(r?.payload?.videos) ? r.payload.videos.length : 0;
                   const total = imgCount + videoCount;
+                  const repliesList = Array.isArray(r.replies) ? r.replies : [];
+                  const isExpanded = expandedSearchKeys.has(r.id);
+                  const toggleSearch = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setExpandedSearchKeys((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(r.id)) next.delete(r.id);
+                      else next.add(r.id);
+                      return next;
+                    });
+                  };
                   return (
-                    <div key={r.id} className="p-3 bg-white rounded border border-black/10">
+                    <div
+                      key={r.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={toggleSearch}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSearch(e); } }}
+                      className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                      aria-expanded={isExpanded}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <div className="font-medium flex items-center gap-2">
+                          <div className="font-medium flex items-center gap-2 flex-wrap">
                             <span>{r.tipo} — {r.cpf}</span>
                             {total > 0 && (
                               <span className="px-2 py-0.5 rounded-full bg-fuchsia-100 text-fuchsia-800 text-xs">
                                 Anexos: {imgCount > 0 ? `${imgCount} img` : ''}{imgCount > 0 && videoCount > 0 ? ' + ' : ''}{videoCount > 0 ? `${videoCount} vid` : ''}
                               </span>
                             )}
+                            {repliesList.length > 0 && (
+                              <span className="text-[11px] text-black/50">{isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}</span>
+                            )}
                           </div>
                           <div className="text-xs text-black/60">Agente: {r.agente || '—'} • Status: {r.status || '—'}</div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <div className="text-xs text-black/60">{new Date(r.createdAt).toLocaleString()}</div>
                           {total > 0 && (
                             <button
                               type="button"
-                              onClick={() => openAttachmentsModal(r)}
+                              onClick={(e) => { e.stopPropagation(); openAttachmentsModal(r); }}
                               className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                             >
                               Ver anexos
@@ -315,6 +344,49 @@ export default function ErrosBugs() {
                           )}
                         </div>
                       </div>
+                      {isExpanded && repliesList.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-black/10">
+                          <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                          <div className="space-y-1.5 max-h-48 overflow-auto">
+                            {[...repliesList].reverse().map((rep, i) => (
+                              <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                                <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                                <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                                <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                                  {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                                  <span className="text-[10px]">
+                                    {rep.replyMessageId ? (
+                                      rep.confirmedAt ? (
+                                        <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            fetch('/api/requests/reply-confirm', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ requestId: r.id, replyMessageId: rep.replyMessageId, confirmedBy: agente })
+                                            }).then((res) => res.json()).then((data) => {
+                                              if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); buscarCpf(); }
+                                              else toast.error(data.error || 'Falha ao confirmar');
+                                            }).catch(() => toast.error('Falha ao confirmar'));
+                                          }}
+                                          className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                        >
+                                          Confirmar visto (✓ no WhatsApp)
+                                        </button>
+                                      )
+                                    ) : (
+                                      <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -350,6 +422,7 @@ export default function ErrosBugs() {
                 <option>Crédito do Trabalhador</option>
                 <option>Antecipação</option>
                 <option>Erro -Gov/ConectaMais</option>
+                <option>Bloqueio judicial</option>
               </select>
             </div>
 
@@ -508,41 +581,100 @@ export default function ErrosBugs() {
             )}
             <div className="space-y-2">
               {localLogs.map((l, idx) => {
-                const icon = l.status === 'feito' ? '✅' : (l.status === 'não feito' ? '❌' : '⏳');
+                const sIcon = String(l.status || '').toLowerCase();
+                const icon = sIcon === 'feito' ? '✅' : (sIcon === 'não feito' || sIcon === 'nao feito' ? '❌' : (sIcon === 'enviado' || l.enviado === true ? '📨' : '⏳'));
                 const repliesList = Array.isArray(l.replies) ? l.replies : [];
+                const logKey = l.waMessageId || `log-${idx}-${String(l.createdAt)}`;
+                const isExpanded = expandedLogKeys.has(logKey);
+                const toggleExpand = (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setExpandedLogKeys((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(logKey)) next.delete(logKey);
+                    else next.add(logKey);
+                    return next;
+                  });
+                };
                 return (
-                  <div key={idx} className="p-3 bg-white rounded border border-black/10">
+                  <div
+                    key={idx}
+                    role="button"
+                    tabIndex={0}
+                    onClick={toggleExpand}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(e); } }}
+                    className="p-3 bg-white rounded border border-black/10 cursor-pointer hover:border-black/20 hover:bg-black/[0.02] transition-colors select-none"
+                    aria-expanded={isExpanded}
+                  >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{icon}</span>
-                        <span className="text-sm">{l.cpf || '—'} — {l.tipo}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-xl shrink-0">{icon}</span>
+                        <span className="text-sm truncate">{l.cpf || '—'} — {l.tipo}</span>
+                        {repliesList.length > 0 && (
+                          <span className="text-[11px] text-black/50 shrink-0">
+                            {isExpanded ? '▼' : '▶'} {repliesList.length} resposta{repliesList.length !== 1 ? 's' : ''}
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-black/60">{new Date(l.createdAt).toLocaleString()}</div>
+                      <div className="text-xs text-black/60 shrink-0">{new Date(l.createdAt).toLocaleString()}</div>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-1.5 min-h-[18px]" aria-label={`progresso: ${String(l.status || '').toLowerCase() || 'em aberto'}`}>
                       {(() => {
                         const s = String(l.status || '').toLowerCase();
-                        const step = s === 'feito' ? 3 : (s === 'não feito' ? 2 : 1);
-                        const Dot = (i) => (
-                          <span key={i} className={`h-1.5 w-8 rounded-full ${i <= step ? 'bg-emerald-500' : 'bg-black/15 dark:bg-white/20'}`}></span>
-                        );
+                        const isDoneFail = (s === 'não feito' || s === 'nao feito');
+                        const isDoneOk = (s === 'feito');
+                        const sentOnly = (!isDoneOk && !isDoneFail) && (s === 'enviado' || l.enviado === true);
+                        const bar1 = (isDoneOk || isDoneFail) ? (isDoneFail ? 'bg-red-500' : 'bg-emerald-500') : (sentOnly ? 'bg-amber-400' : 'bg-sky-400');
+                        const bar2 = (isDoneOk || isDoneFail) ? (isDoneFail ? 'bg-red-500' : 'bg-emerald-500') : (sentOnly ? 'bg-amber-400' : 'bg-sky-400');
+                        const bar3 = (isDoneOk || isDoneFail) ? (isDoneFail ? 'bg-red-500' : 'bg-emerald-500') : 'bg-sky-400';
                         return (
-                          <div className="flex items-center gap-1.5" aria-label={`progresso: ${s || 'em aberto'}`}>
-                            {Dot(1)}{Dot(2)}{Dot(3)}
-                            <span className="text-[11px] opacity-60 ml-2">{s || 'em aberto'}</span>
-                          </div>
+                          <>
+                            <span className={"inline-block h-1.5 w-8 rounded-full shrink-0 " + bar1} />
+                            <span className={"inline-block h-1.5 w-8 rounded-full shrink-0 " + bar2} />
+                            <span className={"inline-block h-1.5 w-8 rounded-full shrink-0 " + bar3} />
+                            <span className="text-[11px] text-black/70 ml-2 shrink-0">{s || 'em aberto'}</span>
+                          </>
                         );
                       })()}
                     </div>
-                    {repliesList.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-black/5">
-                        <div className="text-[11px] font-medium text-black/70 mb-1">Respostas no grupo ({repliesList.length})</div>
-                        <div className="space-y-1">
-                          {repliesList.slice(-3).reverse().map((rep, i) => (
-                            <div key={i} className="text-[11px] text-black/60 bg-black/5 rounded px-2 py-1">
-                              <span className="font-medium">{rep.reactor || '—'}</span>
-                              <span className="ml-1">{(rep.text || '').slice(0, 60)}{(rep.text || '').length > 60 ? '…' : ''}</span>
-                              {rep.at && <span className="ml-1 opacity-70">{new Date(rep.at).toLocaleString()}</span>}
+                    {isExpanded && repliesList.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-black/10">
+                        <div className="text-[11px] font-medium text-black/70 mb-1.5">Menções / Respostas no grupo ({repliesList.length})</div>
+                        <div className="space-y-1.5 max-h-48 overflow-auto">
+                          {[...repliesList].reverse().map((rep, i) => (
+                            <div key={i} className="text-[11px] text-black/70 bg-black/5 rounded px-2 py-1.5">
+                              <div className="font-medium text-black/80">{rep.reactor || '—'}</div>
+                              <div className="mt-0.5 text-black/80 whitespace-pre-wrap break-words">{(rep.text || '—').trim() || '—'}</div>
+                              <div className="mt-1 flex items-center justify-between gap-2 flex-wrap">
+                                {rep.at && <span className="opacity-60">{new Date(rep.at).toLocaleString('pt-BR')}</span>}
+                                <span className="text-[10px]">
+                                  {rep.replyMessageId && l.id ? (
+                                    rep.confirmedAt ? (
+                                      <span className="text-emerald-600">✓ Confirmado{rep.confirmedBy ? ` por ${rep.confirmedBy}` : ''}</span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          fetch('/api/requests/reply-confirm', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ requestId: l.id, replyMessageId: rep.replyMessageId, confirmedBy: agente })
+                                          }).then((res) => res.json()).then((data) => {
+                                            if (data.ok) { toast.success('Confirmado! Reação ✓ enviada no WhatsApp.'); refreshNow(); }
+                                            else toast.error(data.error || 'Falha ao confirmar');
+                                          }).catch(() => toast.error('Falha ao confirmar'));
+                                        }}
+                                        className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                      >
+                                        Confirmar visto (✓ no WhatsApp)
+                                      </button>
+                                    )
+                                  ) : (
+                                    <span className="opacity-60">Check no WhatsApp disponível só para respostas novas</span>
+                                  )}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
