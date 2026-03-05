@@ -3,7 +3,7 @@ import prisma from '@/lib/prisma';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-
+  try {
   const noDb = !process.env.DATABASE_URL;
   if (noDb) {
     const { waMessageId, reaction } = req.body || {};
@@ -136,5 +136,11 @@ export default async function handler(req, res) {
       status,
       message: 'Banco indisponível: reação aceita, não persistida. Configure DATABASE_URL (Supabase) para persistir.'
     });
+  }
+  } catch (e) {
+    console.error('[api/requests/auto-status]', e?.message || e);
+    const r = req?.body?.reaction;
+    const status = (r === '✅') ? 'feito' : (r === '❌' || r === '✖️' || r === '✖') ? 'não feito' : 'em aberto';
+    return res.status(200).json({ success: true, noPersist: true, status, message: 'Erro ao processar; reação não persistida.' });
   }
 }
