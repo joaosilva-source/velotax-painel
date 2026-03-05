@@ -61,6 +61,20 @@ export default function Home() {
             </a>
 
             <a
+              href="/consulta-cpf-conecta"
+              className="rounded-2xl bg-white shadow-md hover:-translate-y-0.5 transition-transform p-6 flex flex-col gap-3"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+                <h2 className="text-lg font-semibold text-[#000058]">Consulta CPF – Ação Conecta Mais</h2>
+              </div>
+              <p className="text-sm text-black/70">
+                Consulta simples: busque por CPF e veja se o cliente está na lista Ação Conecta Mais.
+              </p>
+              <div className="mt-auto text-xs text-amber-700 font-medium">Abrir consulta →</div>
+            </a>
+
+            <a
               href={velohubUrl}
               target="_blank"
               rel="noopener"
@@ -75,6 +89,7 @@ export default function Home() {
               </p>
               <div className="mt-auto text-xs text-emerald-700 font-medium">Ir para o Velohub ↗</div>
             </a>
+
           </div>
 
           <div className="mt-10 text-[11px] text-black/50 text-center md:text-left">
