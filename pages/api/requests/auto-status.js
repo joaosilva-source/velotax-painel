@@ -3,9 +3,15 @@ import prisma from '@/lib/prisma';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  if (!process.env.DATABASE_URL) {
-    return res.status(503).json({ success: false, error: 'DATABASE_URL não configurado', hint: 'Configure no Netlify (Site settings → Environment variables).' });
+
+  const noDb = !process.env.DATABASE_URL;
+  if (noDb) {
+    const { waMessageId, reaction } = req.body || {};
+    const status = reaction === '✅' ? 'feito' : reaction === '❌' || reaction === '✖️' || reaction === '✖' ? 'não feito' : 'em aberto';
+    console.warn('[api/requests/auto-status] Sem DATABASE_URL: reação aceita, não persistida.', { waMessageId, status });
+    return res.status(200).json({ success: true, noPersist: true, status, message: 'Sem banco: reação aceita, não persistida.' });
   }
+
   const { waMessageId: rawWaMessageId, reactor, status: inputStatus, reaction } = req.body || {};
   const waMessageId = (typeof rawWaMessageId === 'object' && rawWaMessageId !== null)
     ? (rawWaMessageId.id || rawWaMessageId)
@@ -122,16 +128,13 @@ export default async function handler(req, res) {
     return res.json({ success: true, ...updated });
   } catch (e) {
     console.error('[api/requests/auto-status]', e);
-    const msg = String(e?.message || e);
-    const isTenantNotFound = /tenant or user not found/i.test(msg);
-    const hint = isTenantNotFound
-      ? 'Supabase: use Connection string do Dashboard (Session/Transaction). Usuário = postgres.PROJECT_REF. Se mudou a senha ou retomou o projeto, atualize DATABASE_URL na Vercel e redeploy.'
-      : 'Erro ao acessar o banco. Veja os logs da função na Vercel.';
-    // Nunca 500: sistema não caiu, só falhou esta operação. Backend trata 503 como retry/degradação.
-    return res.status(503).json({
-      success: false,
-      error: isTenantNotFound ? 'Conexão com o banco recusada. Verifique DATABASE_URL na Vercel.' : 'Erro interno ao atualizar status.',
-      hint
+    // Modo degradado: em vez de 503, retorna 200 para o fluxo não quebrar; reação não é persistida.
+    const status = (req.body?.reaction === '✅') ? 'feito' : (req.body?.reaction === '❌' || req.body?.reaction === '✖️' || req.body?.reaction === '✖') ? 'não feito' : 'em aberto';
+    return res.status(200).json({
+      success: true,
+      noPersist: true,
+      status,
+      message: 'Banco indisponível: reação aceita, não persistida. Configure DATABASE_URL (Supabase) para persistir.'
     });
   }
 }
